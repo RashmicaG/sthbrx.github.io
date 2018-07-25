@@ -1,312 +1,698 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Category: Development &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles in the Development category</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/03/20/erasure-coding-for-programmers-part-1/" rel="bookmark" title="Permalink to Erasure Coding for Programmers, Part 1">Erasure Coding for Programmers, Part 1</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-03-20T10:43:00+11:00"> Mon 20 March 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>Erasure coding is an increasingly popular storage technology - allowing the same level of fault tolerance as replication with a significantly reduced storage footprint.</p>
+<p>Increasingly, erasure coding is available 'out of the box' on storage solutions such as Ceph and OpenStack Swift. Normally, you'd just pull in a library like <a href="https://github.com/01org/isa-l">ISA-L</a> or <a href="http://jerasure.org">jerasure</a>, and set some config options, and you'd be done.</p>
+<p>This post is not about that. This post is about how I went from knowing nothing about erasure coding to writing POWER optimised routines to make it go fast. (These are in the process of being polished for upstream at the moment.) If you want to understand how erasure coding works under the hood - and in particular if you're interested in writing optimised routines to make it run quickly in your platform - this is for you.</p>
+<h2>What are erasure codes anyway?</h2>
+<p>I think the easiest way to begin thinking about erasure codes is "RAID 6 on steroids". RAID 6 allows you to have up to 255 data disks and 2 parity disks (called P and Q), thus allowing you to tolerate the failure of up to 2 arbitrary disks without data loss.</p>
+<p>Erasure codes allow you to have k data disks and m 'parity' or coding disks. You then have a total of m + k disks, and you can tolerate the failure of up to m without losing data.</p>
+<p>The downside of erasure coding is that computing what to put on those parity disks is CPU intensive. Lets look at what we put on them.</p>
+<h2>RAID 6</h2>
+<p>RAID 6 is the easiest way to get started on understanding erasure codes for a number of reasons. H Peter Anvin's paper on RAID 6 in the Linux kernel is an excellent start, but does dive in a bit quickly to the underlying mathematics. So before reading that, read on!</p>
+<h2>Rings and Fields</h2>
+<p>As programmers we're pretty comfortable with modular arithmetic - the idea that if you have:</p>
+<div class="highlight"><pre><span></span>unsigned char a = 255;
+a++;
+</pre></div>
+
+
+<p>the new value of <code>a</code> will be 0, not 256.</p>
+<p>This is an example of an algebraic structure called a <em>ring</em>.</p>
+<p>Rings obey certain laws. For our purposes, we'll consider the following incomplete and somewhat simplified list:</p>
+<ul>
+<li>There is an addition operation.</li>
+<li>There is an additive identity (normally called 0), such that 'a + 0 = a'.</li>
+<li>Every element has an additive inverse, that is, for every element 'a', there is an element -a such that 'a + (-a) = 0'</li>
+<li>There is a multiplication operation.</li>
+<li>There is a multiplicative identity (normally called 1), such that 'a * 1 = a'.</li>
 </ul>
+<p>These operations aren't necessarily addition or multiplication as we might expect from the integers or real numbers. For example, in our modular arithmetic example, we have 'wrap around'. (There are also certain rules the addition and multiplication rules must satisfy - we are glossing over them here.)</p>
+<p>One thing a ring doesn't have a 'multiplicative inverse'. The multiplicative inverse of some non-zero element of the ring (call it a), is the value b such that a * b = 1. (Often instead of b we write 'a^-1', but that looks bad in plain text, so we shall stick to b for now.)</p>
+<p>We do have some inverses in 'mod 256': the inverse of 3 is 171 as 3 * 171 = 513, and 513 = 1 mod 256, but there is no b such that 2 * b = 1 mod 256.</p>
+<p>If every non-zero element of our ring had a multiplicative inverse, we would have what is called a <em>field</em>.</p>
+<p>Now, let's look at a the integers modulo 2, that is, 0 and 1.</p>
+<p>We have this for addition:</p>
+<table>
+<thead>
+<tr>
+<th>+</th>
+<th>0</th>
+<th>1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong></td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td>1</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>Eagle-eyed readers will notice that this is the same as XOR.</p>
+<p>For multiplication: </p>
+<table>
+<thead>
+<tr>
+<th>*</th>
+<th>0</th>
+<th>1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong></td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>As we said, a field is a ring where every non-zero element has a multiplicative inverse. As we can see, the integers modulo 2 shown above is a field: it's a ring, and 1 is its own multiplicative inverse.</p>
+<p>So this is all well and good, but you can't really do very much in a field with 2 elements. This is sad, so we make bigger fields. For this application, we consider the Galois Field with 256 elements - GF(2^8). This field has some surprising and useful properties.</p>
+<p>Remember how we said that integers modulo 256 weren't a field because they didn't have multiplicative inverses? I also just said that GF(2^8) also has 256 elements, but is a field - i.e., it does have inverses! How does that work?</p>
+<p>Consider an element in GF(2^8). There are 2 ways to look at an element in GF(2^8). The first is to consider it as an 8-bit number. So, for example, let's take 100. We can express that as as an 8 bit binary number: 0b01100100.</p>
+<p>We can write that more explicitly as a sum of powers of 2:</p>
+<div class="highlight"><pre><span></span>0 * 2^7 + 1 * 2^6 + 1 * 2^5 + 0 * 2^4 + 0 * 2^3 + 1 * 2^2 + 0 * 2 + 0 * 1
+= 2^6 + 2^5 + 2^2
+</pre></div>
 
 
-<ul class="main-navigation">
-      <li class="active">
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Category: Development</h1>
-    	</header>
-
-    	<div id="blog-archives">
-            <h2>2017</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/09/23/stupid-solutions-to-stupid-problems-hardcoding-your-ssh-key-in-the-kernel/">Stupid Solutions to Stupid Problems: Hardcoding Your SSH Key in the Kernel</a></h1>
-                        <time datetime="2017-09-23 03:00:00+10:00" pubdate>
-                            <span class="month">Sep</span>
-                            <span class="day">23</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/09/22/ncsi-nice-network-youve-got-there/">NCSI - Nice Network You've Got There</a></h1>
-                        <time datetime="2017-09-22 10:08:00+10:00" pubdate>
-                            <span class="month">Sep</span>
-                            <span class="day">22</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/07/17/xdp-on-power/">XDP on Power</a></h1>
-                        <time datetime="2017-07-17 10:08:00+10:00" pubdate>
-                            <span class="month">Jul</span>
-                            <span class="day">17</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/03/29/evaluating-cephfs-on-power/">Evaluating CephFS on Power</a></h1>
-                        <time datetime="2017-03-29 00:00:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">29</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/03/24/erasure-coding-for-programmers-part-2/">Erasure Coding for Programmers, Part 2</a></h1>
-                        <time datetime="2017-03-24 10:08:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">24</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/03/20/erasure-coding-for-programmers-part-1/">Erasure Coding for Programmers, Part 1</a></h1>
-                        <time datetime="2017-03-20 10:43:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">20</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/06/24/kernel-interfaces-and-vdso-test/">Kernel interfaces and vDSO test</a></h1>
-                        <time datetime="2016-06-24 16:30:00+10:00" pubdate>
-                            <span class="month">Jun</span>
-                            <span class="day">24</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/06/07/using-the-atom-editor-for-linux-kernel-development/">Using the Atom editor for Linux kernel development</a></h1>
-                        <time datetime="2016-06-07 17:03:00+10:00" pubdate>
-                            <span class="month">Jun</span>
-                            <span class="day">07</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/05/13/srop-mitigation/">SROP Mitigation</a></h1>
-                        <time datetime="2016-05-13 22:22:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">13</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/03/22/the-elegance-of-the-plaintext-patch/">The Elegance of the Plaintext Patch</a></h1>
-                        <time datetime="2016-03-22 13:53:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">22</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/09/23/stupid-solutions-to-stupid-problems-hardcoding-your-ssh-key-in-the-kernel/">Stupid Solutions to Stupid Problems: Hardcoding Your SSH Key in the Kernel</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/09/22/ncsi-nice-network-youve-got-there/">NCSI - Nice Network You've Got There</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/07/17/xdp-on-power/">XDP on Power</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/03/29/evaluating-cephfs-on-power/">Evaluating CephFS on Power</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/03/24/erasure-coding-for-programmers-part-2/">Erasure Coding for Programmers, Part 2</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
-
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
+<p>Now the other way we can look at elements in GF(2^8) is to replace the '2's with 'x's, and consider them as polynomials. Each of our bits then represents the coefficient of a term of a polynomial, that is:</p>
+<div class="highlight"><pre><span></span>0 x^7 + 1 x^6 + 1 x^5 + 0 x^4 + 0 x^3 + 1 x^2 + 0 x + 0 * 1
+</pre></div>
 
 
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
+<p>or more simply</p>
+<div class="highlight"><pre><span></span>x^6 + x^5 + x^2
+</pre></div>
 
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2016&ndash;2017  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+
+<p>Now, and this is <strong>important</strong>: each of the coefficients are elements of the integers modulo 2: x + x = 2x = 0 as 2 mod 2 = 0. There is no concept of 'carrying' in this addition.</p>
+<p>Let's try: what's 100 + 79 in GF(2^8)?</p>
+<div class="highlight"><pre><span></span>100 = 0b01100100 =&gt; x^6 + x^5 +       x^2
+ 79 = 0b01001111 =&gt; x^6 +       x^3 + x^2 + x + 1
+
+100 + 79         =&gt;   0 + x^5 + x^3 +   0 + x + 1
+                 =    0b00101011 = 43
+</pre></div>
+
+
+<p>So, 100 + 79 = 43 in GF(2^8)</p>
+<p>You may notice we could have done that much more efficiently: we can add numbers in GF(2^8) by just XORing their binary representations together. Subtraction, amusingly, is the same as addition: 0 + x = x =  0 - x, as -1 is congruent to 1 modulo 2.</p>
+<p>So at this point you might be wanting to explore a few additions yourself. Fortuantely there's a lovely tool that will allow you to do that:</p>
+<div class="highlight"><pre><span></span>sudo apt install gf-complete-tools
+gf_add $A $B 8
+</pre></div>
+
+
+<p>This will give you A + B in GF(2^8).</p>
+<div class="highlight"><pre><span></span>&gt; gf_add 100 79 8
+43
+</pre></div>
+
+
+<p>Excellent!</p>
+<p>So, hold on to your hats, as this is where things get really weird. In modular arithmetic example, we considered the elements of our ring to be numbers, and we performed our addition and multiplication modulo 256. In GF(2^8), we consider our elements as polynomials and we perform our addition and multiplication modulo a polynomial. There is one conventional polynomial used in applications:</p>
+<div class="highlight"><pre><span></span>0x11d =&gt; 0b1 0001 1101 =&gt; x^8 + x^4 + x^3 + x^2 + 1
+</pre></div>
+
+
+<p>It is possible to use other polynomials if they satisfy particular requirements, but for our applications we don't need to worry as we will always use 0x11d. I am not going to attempt to explain anything about this polynomial - take it as an article of faith.</p>
+<p>So when we multiply two numbers, we multiply their polynomial representations. Then, to find out what that is modulo 0x11d, we do polynomial long division by 0x11d, and take the remainder.</p>
+<p>Some examples will help.</p>
+<p>Let's multiply 100 by 3.</p>
+<div class="highlight"><pre><span></span>100 = 0b01100100 =&gt; x^6 + x^5 + x^2
+  3 = 0b00000011 =&gt; x + 1
+
+(x^6 + x^5 + x^2)(x + 1) = x^7 + x^6 + x^3 + x^6 + x^5 + x^2
+                         = x^7 + x^5 + x^3 + x^2
+</pre></div>
+
+
+<p>Notice that some of the terms have disappeared: x^6 + x^6 = 0.</p>
+<p>The degree (the largest power of a term) is 7. 7 is less than the degree of 0x11d, which is 8, so we don't need to do anything: the remainder modulo 0x11d is simply x^7 + x^5 + x^3 + x^2.</p>
+<p>In binary form, that is 0b10101100 = 172, so 100 * 3 = 172 in GF(2^8).</p>
+<p>Fortunately <code>gf-complete-tools</code> also allows us to check multiplications:</p>
+<div class="highlight"><pre><span></span>&gt; gf_mult 100 3 8
+172
+</pre></div>
+
+
+<p>Excellent!</p>
+<p>Now let's see what happens if we multiply by a larger number. Let's multiply 100 by 5.</p>
+<div class="highlight"><pre><span></span>100 = 0b01100100 =&gt; x^6 + x^5 + x^2
+  5 = 0b00000101 =&gt; x^2 + 1
+
+(x^6 + x^5 + x^2)(x^2 + 1) = x^8 + x^7 + x^4 + x^6 + x^5 + x^2
+                           = x^8 + x^7 + x^6 + x^5 + x^4 + x^2
+</pre></div>
+
+
+<p>Here we have an x^8 term, so we have a degree of 8. This means will get a different remainder when we divide by our polynomial. We do this with polynomial long division, which you will hopefully remember if you did some solid algebra in high school.</p>
+<div class="highlight"><pre><span></span>                              1
+                           ---------------------------------------------
+x^8 + x^4 + x^3 + x^2 + 1 | x^8 + x^7 + x^6 + x^5 + x^4       + x^2
+                          - x^8                   + x^4 + x^3 + x^2 + 1
+                            -------------------------------------------
+                          =       x^7 + x^6 + x^5       + x^3       + 1
+</pre></div>
+
+
+<p>So we have that our original polynomial (x^8 + x^4 + x^3 + x^2 + 1) is congruent to (x^7 + x^6 + x^5 + x^3 + 1) modulo the polynomial 0x11d.
+Looking at the binary representation of that new polynomial, we have 0b11101001 = 233.</p>
+<p>Sure enough:</p>
+<div class="highlight"><pre><span></span>&gt; gf_mult 100 5 8
+233
+</pre></div>
+
+
+<p>Just to solidify the polynomial long division a bit, let's try a slightly larger example, 100 * 9:</p>
+<div class="highlight"><pre><span></span>100 = 0b01100100 =&gt; x^6 + x^5 + x^2
+  9 = 0b00001001 =&gt; x^3 + 1
+
+(x^6 + x^5 + x^2)(x^3 + 1) = x^9 + x^8 + x^5 + x^6 + x^5 + x^2
+                           = x^9 + x^8 + x^6 + x^2
+</pre></div>
+
+
+<p>Doing long division to reduce our result:</p>
+<div class="highlight"><pre><span></span>                              x
+                           -----------------------------------
+x^8 + x^4 + x^3 + x^2 + 1 | x^9 + x^8       + x^6                   + x^2
+                          - x^9                   + x^5 + x^4 + x^3       + x
+                            -------------------------------------------------
+                          =       x^8       + x^6 + x^5 + x^4 + x^3 + x^2 + x
+</pre></div>
+
+
+<p>We still have a polynomial of degree 8, so we can do another step:</p>
+<div class="highlight"><pre><span></span>                              x +   1
+                           -----------------------------------
+x^8 + x^4 + x^3 + x^2 + 1 | x^9 + x^8       + x^6                   + x^2
+                          - x^9                   + x^5 + x^4 + x^3       + x
+                            -------------------------------------------------
+                          =       x^8       + x^6 + x^5 + x^4 + x^3 + x^2 + x
+                          -       x^8                   + x^4 + x^3 + x^2     + 1
+                                  -----------------------------------------------
+                          =                   x^6 + x^5                   + x + 1
+</pre></div>
+
+
+<p>We now have a polynomial of degree less than 8 that is congruent to our original polynomial modulo 0x11d, and the binary form is 0x01100011 = 99.</p>
+<div class="highlight"><pre><span></span>&gt; gf_mult 100 9 8
+99
+</pre></div>
+
+
+<p>This process can be done more efficiently, of course - but understanding what is going on will make you <em>much</em> more comfortable with what is going on!</p>
+<p>I will not try to convince you that all multiplicative inverses exist in this magic shadow land of GF(2^8), but it's important for the rest of the algorithms to work that they do exist. Trust me on this.</p>
+<h2>Back to RAID 6</h2>
+<p>Equipped with this knowledge, you are ready to take on <a href="https://www.kernel.org/pub/linux/kernel/people/hpa/raid6.pdf">RAID6 in the kernel</a> (PDF) sections 1 - 2.</p>
+<p>Pause when you get to section 3 - this snippet is a bit magic and benefits from some explanation:</p>
+<blockquote>
+<p>Multiplication by {02} for a single byte can be implemeted using the C code:</p>
+</blockquote>
+<div class="highlight"><pre><span></span>uint8_t c, cc;
+cc = (c &lt;&lt; 1) ^ ((c &amp; 0x80) ? 0x1d : 0);
+</pre></div>
+
+
+<p>How does this work? Well:</p>
+<p>Say you have a binary number 0bNMMM MMMM. Mutiplication by 2 gives you 0bNMMMMMMM0, which is 9 bits. Now, there are two cases to consider.</p>
+<p>If your leading bit (N) is 0, your product doesn't have an x^8 term, so we don't need to reduce it modulo the irreducible polynomial.</p>
+<p>If your leading bit is 1 however, your product is x^8 + something, which does need to be reduced. Fortunately, because we took an 8 bit number and multiplied it by 2, the largest term is x^8, so we only need to reduce it once. So we xor our number with our polynomial to subtract it.</p>
+<p>We implement this by letting the top bit overflow out and then xoring the lower 8 bits with the low 8 bits of the polynomial (0x1d)</p>
+<p>So, back to the original statement:</p>
+<div class="highlight"><pre><span></span>(c &lt;&lt; 1) ^ ((c &amp; 0x80) ? 0x1d : 0)
+    |          |          |     |
+    &gt; multiply by 2       |     |
+               |          |     |
+               &gt; is the high bit set - will the product have an x^8 term?
+                          |     |
+                          &gt; if so, reduce by the polynomial
+                                |
+                                &gt; otherwise, leave alone
+</pre></div>
+
+
+<p>Hopefully that makes sense.</p>
+<h3>Key points</h3>
+<p>It's critical you understand the section on Altivec (the vperm stuff), so let's cover it in a bit more detail.</p>
+<p>Say you want to do A * V, where A is a constant and V is an 8-bit variable. We can express V as V_a + V_b, where V_a is the top 4 bits of V, and V_b is the bottom 4 bits. A * V = A * V_a + A * V_b</p>
+<p>We can then make lookup tables for multiplication by A.</p>
+<p>If we did this in the most obvious way, we would need a 256 entry lookup table. But by splitting things into the top and bottom halves, we can reduce that to two 16 entry tables. For example, say A = 02.</p>
+<table>
+<thead>
+<tr>
+<th>V_a</th>
+<th>A * V_a</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>00</td>
+</tr>
+<tr>
+<td>01</td>
+<td>02</td>
+</tr>
+<tr>
+<td>02</td>
+<td>04</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<td>0f</td>
+<td>1e</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>V_b</th>
+<th>A * V_b</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>00</td>
+</tr>
+<tr>
+<td>10</td>
+<td>20</td>
+</tr>
+<tr>
+<td>20</td>
+<td>40</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<td>f0</td>
+<td>fd</td>
+</tr>
+</tbody>
+</table>
+<p>We then use vperm to look up entries in these tables and vxor to combine our results.</p>
+<p>So - and this is a key point - for each A value we wish to multiply by, we need to generate a new lookup table.</p>
+<p>So if we wanted A = 03:</p>
+<table>
+<thead>
+<tr>
+<th>V_a</th>
+<th>A * V_a</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>00</td>
+</tr>
+<tr>
+<td>01</td>
+<td>03</td>
+</tr>
+<tr>
+<td>02</td>
+<td>06</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<td>0f</td>
+<td>11</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>V_b</th>
+<th>A * V_b</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>00</td>
+</tr>
+<tr>
+<td>10</td>
+<td>30</td>
+</tr>
+<tr>
+<td>20</td>
+<td>60</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<td>f0</td>
+<td>0d</td>
+</tr>
+</tbody>
+</table>
+<p>One final thing is that Power8 adds a vpermxor instruction, so we can reduce the entire 4 instruction sequence in the paper:</p>
+<div class="highlight"><pre><span></span>vsrb v1, v0, v14
+vperm v2, v12, v12, v0
+vperm v1, v13, v13, v1
+vxor v1, v2, v1
+</pre></div>
+
+
+<p>to 1 vpermxor:</p>
+<div class="highlight"><pre><span></span>vpermxor v1, v12, v13, v0
+</pre></div>
+
+
+<p>Isn't POWER grand?</p>
+<h2>OK, but how does this relate to erasure codes?</h2>
+<p>I'm glad you asked.</p>
+<p>Galois Field arithmetic, and its application in RAID 6 is the basis for erasure coding. (It's also the basis for CRCs - two for the price of one!)</p>
+<p>But, that's all to come in part 2, which will definitely be published before 7 April!</p>
+<p>Many thanks to Sarah Axtens who reviewed the mathematical content of this post and suggested significant improvements. All errors and gross oversimplifications remain my own. Thanks also to the OzLabs crew for their feedback and comments.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/06/24/kernel-interfaces-and-vdso-test/" rel="bookmark" title="Permalink to Kernel interfaces and vDSO test">Kernel interfaces and vDSO test</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-06-24T16:30:00+10:00"> Fri 24 June 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h3>Getting Suckered</h3>
+<p>Last week a colleague of mine came up to me and showed me some of the
+<abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> on PowerPC and asked why on earth does it fail
+<a href="https://github.com/nlynch-mentor/vdsotest">vdsotest</a>. I should come
+clean at this point and admit that I knew very little about the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr>
+and hadn't heard of vdsotest. I had to admit to this colleague that I
+had no idea everything looked super sane.</p>
+<p>Unfortunately (for me) I got hooked, vdsotest was saying it was
+getting '22' instead of '-1' and it was the case where the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> would
+call into the kernel. It plagued me all night, 22 is so suspicious.
+Right before I got to work the next morning I had an epiphany, "I bet
+22 is EINVAL".</p>
+<h3>Virtual Dynamically linked Shared Objects</h3>
+<p>The <a href="https://en.wikipedia.org/wiki/VDSO"><abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr></a> is a mechanism to
+expose some kernel functionality into userspace to avoid the cost of a
+context switch into kernel mode. This is a great feat of engineering,
+avoiding the context switch can have a dramatic speedup for userspace
+code. Obviously not all kernel functionality can be placed into
+userspace and even for the functionality which can,
+there may be edge cases in which the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> needs to ask the kernel.</p>
+<p>Who tests the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr>? For the portion that lies exclusively in userspace it
+will escape all testing of the syscall interface which is really what
+kernel developers are so focused on not breaking. Enter Nathan Lynch
+with <a href="https://github.com/nlynch-mentor/vdsotest">vdsotest</a> who has
+done some great work!</p>
+<h3>The Kernel</h3>
+<p>When the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> can't get the correct value without the kernel, it
+simply calls into the kernel because the kernel is the definitive
+reference for every syscall. On PowerPC something like this happens
+(sorry, our <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> is 100% asm):
+<sup id="fnref-1"><a class="footnote-ref" href="#fn-1">1</a></sup></p>
+<div class="highlight"><pre><span></span><span class="err">/*</span>
+ <span class="err">*</span> <span class="nf">Exact</span> <span class="no">prototype</span> <span class="no">of</span> <span class="no">clock_gettime</span><span class="p">()</span>
+ <span class="err">*</span>
+ <span class="err">*</span> <span class="nf">int</span> <span class="no">__kernel_clock_gettime</span><span class="p">(</span><span class="no">clockid_t</span> <span class="no">clock_id</span><span class="p">,</span> <span class="no">struct</span> <span class="no">timespec</span> <span class="p">*</span><span class="no">tp</span><span class="p">)</span><span class="c">;</span>
+ <span class="p">*</span>
+ <span class="err">*/</span>
+<span class="nf">V_FUNCTION_BEGIN</span><span class="p">(</span><span class="no">__kernel_clock_gettime</span><span class="p">)</span>
+  <span class="na">.cfi_startproc</span>
+    <span class="err">/*</span> <span class="nf">Check</span> <span class="no">for</span> <span class="no">supported</span> <span class="no">clock</span> <span class="no">IDs</span> <span class="p">*</span><span class="err">/</span>
+    <span class="nf">cmpwi</span>   <span class="no">cr0</span><span class="p">,</span><span class="no">r3</span><span class="p">,</span><span class="no">CLOCK_REALTIME</span>
+    <span class="nf">cmpwi</span>   <span class="no">cr1</span><span class="p">,</span><span class="no">r3</span><span class="p">,</span><span class="no">CLOCK_MONOTONIC</span>
+    <span class="nf">cror</span>    <span class="no">cr0</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span><span class="p">,</span><span class="no">cr0</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span><span class="p">,</span><span class="no">cr1</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span>
+    <span class="nf">bne</span> <span class="no">cr0</span><span class="p">,</span><span class="mi">99</span><span class="no">f</span>
+
+    <span class="err">/*</span> <span class="err">[</span><span class="nf">snip</span><span class="p">]</span> <span class="p">*</span><span class="err">/</span>
+
+    <span class="err">/*</span>
+     <span class="err">*</span> <span class="nf">syscall</span> <span class="no">fallback</span>
+     <span class="err">*/</span>
+<span class="err">99:</span>
+    <span class="nf">li</span>  <span class="no">r0</span><span class="p">,</span><span class="no">__NR_clock_gettime</span>
+    <span class="nf">sc</span>
+    <span class="nf">blr</span>
+</pre></div>
+
+
+<p>For those not familiar, this couldn't be more simple. The start checks
+to see if it is a clock id that the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> can handle and if not it jumps
+to the 99 label. From here simply load the syscall number, jump to the
+kernel and branch to link register aka 'return'.  In this case the
+'return' statement would return to the userspace code which called the
+<abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> function.</p>
+<p>Wait, having the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> calling into the kernel call gets us the wrong
+result? Or course it should, vdsotest is assuming a C ABI with return
+values and errno but the kernel doesn't do that, the kernel ABI is
+different. How does this even work on x86? Ohhhhh vdsotest does <sup id="fnref-2"><a class="footnote-ref" href="#fn-2">2</a></sup></p>
+<div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">record_syscall_result</span><span class="p">(</span><span class="k">struct</span> <span class="n">syscall_result</span> <span class="o">*</span><span class="n">res</span><span class="p">,</span>
+                     <span class="kt">int</span> <span class="n">sr_ret</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sr_errno</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/* Calling the vDSO directly instead of through libc can lead to:</span>
+<span class="cm">     * - The vDSO code punts to the kernel (e.g. unrecognized clock id).</span>
+<span class="cm">     * - The kernel returns an error (e.g. -22 (-EINVAL))</span>
+<span class="cm">     * So we need to recognize this situation and fix things up.</span>
+<span class="cm">     * Fortunately we&#39;re dealing only with syscalls that return -ve values</span>
+<span class="cm">     * on error.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sr_ret</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">sr_errno</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sr_errno</span> <span class="o">=</span> <span class="o">-</span><span class="n">sr_ret</span><span class="p">;</span>
+        <span class="n">sr_ret</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">struct</span> <span class="n">syscall_result</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">sr_ret</span> <span class="o">=</span> <span class="n">sr_ret</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">sr_errno</span> <span class="o">=</span> <span class="n">sr_errno</span><span class="p">,</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>That little hack isn't working on PowerPC and here's why:</p>
+<p>The kernel puts the return value in the ABI specified return register
+(r3) and uses a condition register bit (condition register field 0, SO
+bit), so unlike x86 on error the return value isn't negative. To make
+matters worse, the condition register is very difficult to access from
+C. Depending on your definition of 'access from C' you might consider
+it impossible, a fixup like that would be impossible.</p>
+<h3>Lessons learnt</h3>
+<ul>
+<li><abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> supplied functions aren't quite the same as their libc
+counterparts. Unless you have very good reason, and to be fair,
+vdsotest does have a very good reason, always access the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> through
+libc</li>
+<li>Kernel interfaces aren't C interfaces, yep, they're close but they
+  aren't the same</li>
+<li>22 is in fact EINVAL</li>
+<li>Different architectures are... Different!</li>
+<li>Variety is the spice of life</li>
+</ul>
+<p>P.S I have a hacky patch waiting review</p>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn-1">
+<p>arch/powerpc/kernel/vdso64/gettimeofday.S&#160;<a class="footnote-backref" href="#fnref-1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn-2">
+<p>src/vdsotest.h&#160;<a class="footnote-backref" href="#fnref-2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/06/07/using-the-atom-editor-for-linux-kernel-development/" rel="bookmark" title="Permalink to Using the Atom editor for Linux kernel development">Using the Atom editor for Linux kernel development</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-06-07T17:03:00+10:00"> Tue 07 June 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/russell-currey.html">Russell Currey</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p><a href="https://atom.io">Atom</a> is a text editor.  It's new, it's shiny, and it has a lot of good and bad sides.  I work in a lab full of kernel developers, and in the kernel, there are no IDEs.  There's no real metadata you can get out of your compiler (given the kernel isn't very clang friendly), there's certainly nothing like that you can get out of your build system, so "plain old" text editors reign supreme.  It's a vim or Emacs show.</p>
+<p>And so Atom comes along.  Unlike other shiny new text editors to emerge in the past 10 or so years, it's open source (unlike Sublime Text), it works well on Linux, and it's very configurable.  When it first came out, Atom was an absolute mess.  There was a noticeable delay whenever you typed a key.  That has gone, but the sour impression that comes from replacing a native application with a web browser in a frame remains.</p>
+<p>Like the curious person I am, I'm always trying out new things to see if they're any good.  I'm not particularly tied to any editor; I prefer modal editing, but I'm no vim wizard.  I eventually settled on using Emacs with evil-mode (which I assumed would make both Emacs and vim people like me, but the opposite happened), which was decent.  It was configurable, it was good, but it had issues.</p>
+<p><img alt="The Atom editor" src="/images/ruscur/36lOiMT.png"></p>
+<p>So, let's have a look at how Atom stacks up for low-level work.  First of all, it's X only.  You wouldn't use it to change one line of a file in /etc/, and a lot of kernel developers only edit code inside a terminal emulator.  Most vim people do this since gvim is a bit wonky, and Emacs people can double-dip; using Emacs without X for small things and Emacs with X for programming.  You don't want to do that with Atom, if nothing else because of its slow startup time.</p>
+<p>Now let's look at configurability.  In my opinion, no editor will ever match the level of configurability of Emacs, however the barrier to entry is much lower here.  Atom has lots of options exposed in a config file, and you can set them there or you can use an equivalent GUI.  In addition, a perk of being a browser in a frame is that you can customise a lot of UI things with CSS, for those inclined.  Overall, I'd say Emacs &gt; Atom &gt; vim here, but for a newbie, it's probably Atom &gt; Emacs &gt; vim.</p>
+<p>Okay, package management.  Atom is the clear winner here.  The package repository is very easy to use, for users and developers.  I wrote my own package, typed <code>apm publish</code> and within a minute a friend could install it.  For kernel development though, you don't really need to install anything, Atom is pretty batteries-included.  This includes good syntax highlighting, ctags support, and a few themes.  In this respect, Atom feels like an editor that was created this century.</p>
+<p><img alt="Atom's inbuilt package management" src="/images/ruscur/DAx7GqD.png"></p>
+<p>What about actually editing text?  Well, I only use modal editing, and Atom is very far from being the best vim.  I think evil-mode in Emacs is the best vim, followed closely by vim itself.  Atom has a vim-mode, and it's fine for insert/normal/visual mode, but anything involving a : is a no-go.  There's a plugin that's entirely useless.  If I tried to do a replacement with :s, Atom would lock up <em>and</em> fail to replace the text.  vim replaced thousands of occurrences with in a second.  Other than that, Atom's pretty good.  I can move around pretty much just as well as I could in vim or Emacs, but not quite.  Also, it support ligatures!  The first kernel-usable editor that does.</p>
+<p>Autocompletions feel very good in Atom.  It completes within a local scope automatically, without any knowledge of the type of file you're working on.  As far as intelligence goes, Atom's support for tags outside of ctags is very lacking, and ctags is stupid.  Go-to definition <em>sometimes</em> works, but it lags when dealing with something as big as the Linux kernel.  Return-from definition is very good, though.  Another downside is that it can complete from any open buffer, which is a huge problem if you're writing Rust in one tab and C in the other.</p>
+<p><img alt="Atom's fuzzy file matching is pretty good" src="/images/ruscur/0PRiIUS.png"></p>
+<p>An experience I've had with Atom that I haven't had with other editors is actually writing a plugin.  It was really easy, mostly because I stole a lot of it from an existing plugin, but it was easy.  I wrote a syntax highlighting package for POWER assembly, which was much more fighting with regular expressions than it was fighting with anything in Atom.  Once I had it working, it was very easy to publish; just push to GitHub and run a command.</p>
+<p>Sometimes, Atom can get too clever for its own good.  For some completely insane reason, it automatically "fixes" whitespace in every file you open, leading to a huge amount of git changes you didn't intend.  That's easy to disable, but I don't want my editor doing that, it'd be much better if it highlighted whitespace it didn't like by default, like you can get vim and Emacs to do.  For an editor designed around git, I can't comprehend that decision.</p>
+<p><img alt="Atom can also fuzzy match its commands" src="/images/ruscur/arbWXHx.png"></p>
+<p>Speaking of git, the editor pretty much has everything you'd expect for an editor written at GitHub.  The sidebar shows you what lines you've added, removed and modified, and the gutter shows you what branch you're on and how much you've changed all-up.  There's no in-built support for doing git things inside the editor, but there's a package for it.  It's pretty nice to get something "for free" that you'd have to tinker with in other editors.</p>
+<p>Overall, Atom has come a long way and still has a long way to go.  I've been using it for a few weeks and I'll continue to use it.  I'll encourage new developers to use it, but it needs to be better for experienced programmers who are used to their current workflow to consider switching.  If you're in the market for a new editor, Atom might just be for you.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/05/13/srop-mitigation/" rel="bookmark" title="Permalink to SROP Mitigation">SROP Mitigation</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-05-13T22:22:00+10:00"> Fri 13 May 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/rashmica-gupta.html">Rashmica Gupta</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h2>What is SROP?</h2>
+<p>Sigreturn Oriented Programming - a general technique that can be used as an exploit, or as a backdoor to exploit another vulnerability.</p>
+<h2>Okay, but what is it?</h2>
+<p>Yeah... Let me take you through some relevant background info, where I skimp on the details and give you the general picture.</p>
+<p>In Linux, software interrupts are called signals. More about signals <a href="http://www.thegeekstuff.com/2012/03/linux-signals-fundamentals/">here</a>! Generally a signal will convey some information from the kernel and so most signals will have a specific signal handler (some code that deals with the signal) setup.</p>
+<p>Signals are asynchronous - ie they can be sent to a process/program at anytime. When a signal arrives for a process, the kernel suspends the process. The kernel then saves the 'context' of the process - all the general purpose registers (GPRs), the stack pointer, the next-instruction pointer etc - into a structure called a 'sigframe'. The sigframe is stored on the stack, and then the kernel runs the signal handler. At the very end of the signal handler, it calls a special system call called 'sigreturn' - indicating to the kernel that the signal has been dealt with. The kernel then grabs the sigframe from the stack, restores the process's context and resumes the execution of the process.</p>
+<p>This is the rough mental picture you should have:</p>
+<p><img alt="Double Format" src="/images/rashmica/picture.png"></p>
+<h2>Okay... but you still haven't explained what SROP is..?</h2>
+<p>Well, if you insist...</p>
+<p>The above process was designed so that the kernel does not need to keep track of what signals it has delivered. The kernel assumes that the sigframe it takes off the stack was legitimately put there by the kernel because of a signal. This is where we can trick the kernel!</p>
+<p>If we can construct a fake sigframe, put it on the stack, and call sigreturn, the kernel will assume that the sigframe is one it put there before and will load the contents of the fake context into the CPU's registers and 'resume' execution from where the fake sigframe tells it to. And that is what SROP is!</p>
+<h2>Well that sounds cool, show me!</h2>
+<p><strong>Firstly</strong> we have to set up a (valid) sigframe:</p>
+<p>By valid sigframe, I mean a sigframe that the kernel will not reject. Luckily most architectures only examine a few parts of the sigframe to determine the validity of it. Unluckily, you will have to dive into the source code to find out which parts of the sigframe you need to set up for your architecture. Have a look in the function which deals with the syscall sigreturn (probably something like sys_sigreturn() ).</p>
+<p>For a real time signal on a little endian powerpc 64bit machine, the sigframe looks something like this:</p>
+<div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">rt_sigframe</span> <span class="p">{</span>
+        <span class="k">struct</span> <span class="n">ucontext</span> <span class="n">uc</span><span class="p">;</span>
+        <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">_unused</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">tramp</span><span class="p">[</span><span class="n">TRAMP_SIZE</span><span class="p">];</span>
+        <span class="k">struct</span> <span class="n">siginfo</span> <span class="n">__user</span> <span class="o">*</span><span class="n">pinfo</span><span class="p">;</span>
+        <span class="kt">void</span> <span class="n">__user</span> <span class="o">*</span><span class="n">puc</span><span class="p">;</span>
+        <span class="k">struct</span> <span class="n">siginfo</span> <span class="n">info</span><span class="p">;</span>
+        <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">user_cookie</span><span class="p">;</span>
+        <span class="cm">/* New 64 bit little-endian ABI allows redzone of 512 bytes below sp */</span>
+        <span class="kt">char</span> <span class="n">abigap</span><span class="p">[</span><span class="n">USER_REDZONE_SIZE</span><span class="p">];</span>
+<span class="p">}</span> <span class="n">__attribute__</span> <span class="p">((</span><span class="n">aligned</span> <span class="p">(</span><span class="mi">16</span><span class="p">)));</span>
+</pre></div>
+
+
+<p>The most important part of the sigframe is the context or ucontext as this contains all the register values that will be written into the CPU's registers when the kernel loads in the sigframe. To minimise potential issues we can copy valid values from the current GPRs into our fake ucontext:</p>
+<div class="highlight"><pre><span></span><span class="k">register</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">r1</span> <span class="nf">asm</span><span class="p">(</span><span class="s">&quot;r1&quot;</span><span class="p">);</span>
+<span class="k">register</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">r13</span> <span class="nf">asm</span><span class="p">(</span><span class="s">&quot;r13&quot;</span><span class="p">);</span>
+<span class="k">struct</span> <span class="n">ucontext</span> <span class="n">ctx</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">0</span> <span class="p">};</span>
+
+<span class="cm">/* We need a system thread id so copy the one from this process */</span>
+<span class="n">ctx</span><span class="p">.</span><span class="n">uc_mcontext</span><span class="p">.</span><span class="n">gp_regs</span><span class="p">[</span><span class="n">PT_R13</span><span class="p">]</span> <span class="o">=</span> <span class="n">r13</span><span class="p">;</span>
+
+<span class="cm">/*  Set the context&#39;s stack pointer to where the current stack pointer is pointing */</span>
+<span class="n">ctx</span><span class="p">.</span><span class="n">uc_mcontext</span><span class="p">.</span><span class="n">gp_regs</span><span class="p">[</span><span class="n">PT_R1</span><span class="p">]</span> <span class="o">=</span> <span class="n">r1</span><span class="p">;</span>
+</pre></div>
+
+
+<p>We also need to tell the kernel where to resume execution from. As this is just a test to see if we can successfully get the kernel to resume execution from a fake sigframe we will just point it to a function that prints out some text.</p>
+<div class="highlight"><pre><span></span><span class="cm">/* Set the next instruction pointer (NIP) to the code that we want executed */</span>
+<span class="n">ctx</span><span class="p">.</span><span class="n">uc_mcontext</span><span class="p">.</span><span class="n">gp_regs</span><span class="p">[</span><span class="n">PT_NIP</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span> <span class="n">test_function</span><span class="p">;</span>
+</pre></div>
+
+
+<p>For some reason the sys_rt_sigreturn() on little endian powerpc 64bit checks the endianess bit of the ucontext's MSR register, so we need to set that:</p>
+<div class="highlight"><pre><span></span><span class="cm">/* Set MSR bit if LE */</span>
+<span class="n">ctx</span><span class="p">.</span><span class="n">uc_mcontext</span><span class="p">.</span><span class="n">gp_regs</span><span class="p">[</span><span class="n">PT_MSR</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">;</span>
+</pre></div>
+
+
+<p>Fun fact: not doing this or setting it to 0 results in the CPU switching from little endian to big endian! For a powerpc machine sys_rt_sigreturn() only examines ucontext, so we do not need to set up a full sigframe.</p>
+<p><strong>Secondly</strong> we have to put it on the stack:</p>
+<div class="highlight"><pre><span></span><span class="cm">/* Set current stack pointer to our fake context */</span>
+<span class="n">r1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">ctx</span><span class="p">;</span>
+</pre></div>
+
+
+<p><strong>Thirdly</strong>, we call sigreturn:</p>
+<div class="highlight"><pre><span></span><span class="cm">/* Syscall - NR_rt_sigreturn */</span>
+<span class="k">asm</span><span class="p">(</span><span class="s">&quot;li 0, 172</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="k">asm</span><span class="p">(</span><span class="s">&quot;sc</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</pre></div>
+
+
+<p>When the kernel receives the sigreturn call, it looks at the userspace stack pointer for the ucontext and loads this in. As we have put valid values in the ucontext, the kernel assumes that this is a valid sigframe that it set up earlier and loads the contents of the ucontext in the CPU's registers "and resumes" execution of the process from the address we pointed the NIP to.</p>
+<p>Obviously, you need something worth executing at this address, but sadly that next part is not in my job description. This is a nice gateway into the kernel though and would pair nicely with another kernel vulnerability.  If you are interested in some more in depth examples, have a read of <a href="http://www.cs.vu.nl/~herbertb/papers/srop_sp14.pdf">this</a> paper.</p>
+<h2>So how can we mitigate this?</h2>
+<p>Well, I'm glad you asked. We need some way of distinguishing between sigframes that were put there legitimately by the kernel and 'fake' sigframes. The current idea that is being thrown around is cookies, and you can see the x86 discussion <a href="https://lkml.org/lkml/2016/3/29/788">here</a>.</p>
+<p>The proposed solution is to give every sighand struct a randomly generated value. When the kernel constructs a sigframe for a process, it stores a 'cookie' with the sigframe. The cookie is a hash of the cookie's location and the random value stored in the sighand struct for the process. When the kernel receives a sigreturn, it hashes the location where the cookie should be with the randomly generated number in sighand struct - if this matches the cookie, the cookie is zeroed,  the sigframe is valid and the kernel will restore this context.  If the cookies do not match, the sigframe is not restored.</p>
+<p>Potential issues:</p>
+<ul>
+<li>Multithreading: Originally the random number was suggested to be stored in the task struct. However, this would break multi-threaded applications as every thread has its own task struct. As the sighand struct is shared by threads, this should not adversely affect multithreaded applications.</li>
+<li>Cookie location: At first I put the cookie on top of the sigframe. However some code in userspace assumed that all the space between the signal handler and the sigframe  was essentially up for grabs and would zero the cookie before I could read the cookie value. Putting the cookie below the sigframe was also a no-go due to the ABI-gap (a gap below the stack pointer that signal code cannot touch) being a part of the sigframe. Putting the cookie inside the sigframe, just above the ABI gap has been fine with all the tests I have run so far!</li>
+<li>Movement of sigframe: If you move the sigframe on the stack, the cookie value will no longer be valid... I don't think that this is something that you should be doing, and have not yet come across a scenario that does this. </li>
+</ul>
+<p>For a more in-depth explanation of SROP, click <a href="https://lwn.net/Articles/676803/">here</a>.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/03/22/the-elegance-of-the-plaintext-patch/" rel="bookmark" title="Permalink to The Elegance of the Plaintext Patch">The Elegance of the Plaintext Patch</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-03-22T13:53:00+11:00"> Tue 22 March 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/russell-currey.html">Russell Currey</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>I've only been working on the Linux kernel for a few months.  Before that, I worked with proprietary source control at work and common tools like GitHub at home.  The concept of the mailing list seemed obtuse to me.  If I noticed a problem with some program, I'd be willing to open an issue on GitHub but not to send an email to a mailing list.  Who still uses those, anyway?</p>
+<p>Starting out with the kernel meant I had to figure this email thing out.  <code>git format-patch</code> and <code>git send-email</code> take most of the pain out of formatting and submitting a patch, which is nice.  The patch files generated by <code>format-patch</code> open nicely in Emacs by default, showing all whitespace and letting you pick up any irregularities.  <code>send-email</code> means you can send it to yourself or a friend first, finding anything that looks stupid before being exposed to the public.</p>
+<p>And then what?  You've sent an email.  It gets sent to hundreds or thousands of people.  Nowhere near that many will read it.  Some might miss it due to their mail server going down, or the list flagging your post as spam, or requiring moderation.  Some recipients will be bots that archive mail on the list, or publish information about the patch.  If you haven't formatted it correctly, someone will let you know quickly.  If your patch is important or controversial, you'll have all sorts of responses.  If your patch is small or niche, you might not ever hear anything back.</p>
+<p>I remember when I sent my first patch.  I was talking to a former colleague who didn't understand the patch/mailing list workflow at all.  I sent him a link to my patch on a mail archive.  I explained it like a pull request - here's my code, you can find the responses.  What's missing from a GitHub-esque pull request?  We don't know what tests it passed.  We don't know if it's been merged yet, or if the maintainer has looked at it.  It takes a bit of digging around to find out who's commented on it.  If it's part of a series, that's awkward to find out as well.  What about revisions of a series?  That's another pain point.</p>
+<p>Luckily, these problems do have solutions.  <a href="http://jk.ozlabs.org/projects/patchwork/">Patchwork</a>, written by fellow OzLabs member <a href="http://jk.ozlabs.org">Jeremy Kerr</a>, changes the way we work with patches.  Project maintainers rely on Pathwork instances, such as <a href="https://patchwork.ozlabs.org">https://patchwork.ozlabs.org</a>, for their day-to-day workflow: tagging reviewers, marking the status of patches, keeping track of tests, acks, reviews and comments in one place.  Missing from this picture is support for series and revisions, which is a feature that's being developed by the <a href="https://www.freedesktop.org/wiki/">freedesktop</a> project.  You can check out their changes in action <a href="https://patchwork.freedesktop.org">here</a>.</p>
+<p>So, Patchwork helps patches and email catch up to what GitHub has in terms of ease of information.  We're still missing testing and other hooks.  What about review?  What can we do with email, compared to GitHub and the like?</p>
+<p>In my opinion, the biggest feature of email is the ease of review.  Just reply inline and you're done.  There's inline commenting on GitHub and GitLab, which works well but is a bit tacky, people commenting on the same thing overlap and conflict, each comment generates a notification (which can be an email until you turn that off).  Plus, since it's email, it's really easy to bring in additional people to the conversation as necessary.  If there's a super lengthy technical discussion in the kernel, it might just take Linus to resolve.</p>
+<p>There are alternatives to just replying to email, too, such as <a href="https://www.gerritcodereview.com/">Gerrit</a>.  Gerrit's pretty popular, and has a huge amount of features.  I understand why people use it, though I'm not much of a fan.  Reason being, it doesn't add to the email workflow, it replaces it.  Plaintext email is supported on pretty much any device, with a bunch of different programs.  From the goals of Patchwork: "patchwork should supplement mailing lists, not replace them".</p>
+<p>Linus Torvalds famously explained why he prefers email over GitHub pull requests <a href="https://github.com/torvalds/linux/pull/17">here</a>, using <a href="https://groups.google.com/forum/#!topic/linux.kernel/w957vpu3PPU">this</a> pull request from Ben Herrenschmidt as an example of why git's own pull request format is superior to that of GitHub.  Damien Lespiau, who is working on the freedesktop Patchwork fork, <a href="http://damien.lespiau.name/2016/02/augmenting-mailing-lists-with-patchwork.html">outlines on his blog</a> all the issues he has with mailing list workflows and why he thinks mailing lists are a relic of the past.  His work on Patchwork has gone a long way to help fix those problems, however I don't think mailing lists are outdated and superceded, I think they are timeless.  They are a technology-agnostic, simple and free system that will still be around if GitHub dies or alienates its community.</p>
+<p>That said, there's still the case of the missing features.  What about automated testing?  What about developer feedback?  What about making a maintainer's life easier?  We've been working on improving these issues, and I'll outline how we're approaching them in a future post.</p> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+<p class="paginator">
+        <a href="https://sthbrx.github.io/category/development.html">&laquo;</a>
+    Page 2 / 2
+</p>
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>

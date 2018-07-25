@@ -1,248 +1,488 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Author: Cyril Bur &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed - Articles by Cyril Bur</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles by Cyril Bur</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/" rel="bookmark" title="Permalink to memcmp() for POWER8 - part II">memcmp() for POWER8 - part II</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-09-01T12:00:00+10:00"> Fri 01 September 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>This entry is a followup to part I which you should absolutely read
+<a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">here</a> before continuing
+on.</p>
+<h2>Where we left off</h2>
+<p>We concluded that while a vectorised <code>memcmp()</code> is a win, there are
+some cases where it won't quite perform.</p>
+<h2>The overhead of enabling ALTIVEC</h2>
+<p>In the kernel we explicitly don't touch ALTIVEC unless we need to,
+this means that in the general case we can leave the userspace
+registers in place and not have do anything to service a syscall for a
+process.</p>
+<p>This means that if we do want to use ALTIVEC in the kernel, there is
+some setup that must be done. Notably, we must enable the facility (a
+potentially time consuming move to MSR), save off the registers (if
+userspace we using them) and an inevitable restore later on.</p>
+<p>If all this needs to be done for a <code>memcmp()</code> in the order of tens of
+bytes then it really wasn't worth it.</p>
+<p>There are two reasons that <code>memcmp()</code> might go for a small number of
+bytes, firstly and trivially detectable is simply that parameter n is
+small. The other is harder to detect, if the memcmp() is going to fail
+(return non zero) early then it also wasn't worth enabling ALTIVEC.</p>
+<h2>Detecting early failures</h2>
+<p>Right at the start of <code>memcmp()</code>, before enabling ALTIVEC, the first
+64 bytes are checked using general purpose registers. Why the first 64
+bytes, well why not? In a strange twist of fate 64 bytes happens to be
+the amount of bytes in four ALTIVEC registers (128 bits per register,
+so 16 bytes multiplied by 4) and by utter coincidence that happens to
+be the stride of the ALTIVEC compare loop.</p>
+<h2>What does this all look like</h2>
+<p>Well unlike part I the results appear slightly less consistent across
+three runs of measurement but there are some very key differences with
+part I. The trends do appear to be the same across all three runs,
+just less pronounced - why this is is unclear.</p>
+<p>The difference between run two and run three clipped at deltas of
+1000ns is interesting:
+<img alt="Sample 2: Deltas below 1000ns" src="/images/power8_memcmp/v2deltas2-1000.png" title="Sample 2: Deltas below 1000ns"></p>
+<p>vs</p>
+<p><img alt="Sample 3: Deltas below 1000ns" src="/images/power8_memcmp/v2deltas3-1000.png" title="Sample 3: Deltas below 1000ns"></p>
+<p>The results are similar except for a spike in the amount of deltas in
+the unpatched kernel at around 600ns. This is not present in the first
+sample (deltas1) of data. There are a number of reasons why this spike
+could have appeared here, it is possible that the kernel or hardware
+did something under the hood, prefetch could have brought deltas for a
+<code>memcmp()</code> that would otherwise have yielded a greater delta into the
+600ns range.</p>
+<p>What these two graphs do both demonstrate quite clearly is that
+optimisations down at the sub 100ns end have resulted in more sub
+100ns deltas for the patched kernel, a significant win over the
+original data. Zooming out and looking at a graph which includes
+deltas up to 5000ns shows that the sub 100ns delta optimisations
+haven't noticeably slowed the performance of long duration <code>memcmp()</code>,
+<img alt="Samply 2: Deltas below 5000ns" src="/images/power8_memcmp/v2deltas2-5000.png" title="Sample 2: Deltas below 5000ns">.</p>
+<h2>Conclusion</h2>
+<p>The small amount of extra development effort has yielded tangible
+results in reducing the low end <code>memcmp()</code> times. This second round of
+data collection and performance analysis only confirms the that for
+any significant amount of comparison, a vectorised loop is
+significantly quicker.</p>
+<p>The results obtained here show no downside to adopting this approach
+for all power8 and onwards chips as this new version of the patch
+solves the performance regression for small compares.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/" rel="bookmark" title="Permalink to memcmp() for POWER8">memcmp() for POWER8</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-08-07T12:00:00+10:00"> Mon 07 August 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h2>Userspace</h2>
+<p>When writing C programs in userspace there is libc which does so much
+of the heavy lifting. One important thing libc provides is portability
+in performing syscalls, that is, you don't need to know the
+architectural details of performing a syscall on each architecture
+your program might be compiled for. Another important feature that
+libc provides for the average userspace programmer is highly optimised
+routines to do things that are usually performance critical. It would
+be extremely inefficient for each userspace programmer if they had to
+implement even the naive version of these functions let alone
+optimised versions. Let us take <code>memcmp()</code> for example, I could
+trivially implement this in C like:</p>
+<div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">memcmp</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">p1</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">p2</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">p2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>However, while it is incredibly portable it is simply not going to
+perform, which is why the nice people who write libc have highly
+optimised ones in assembly for each architecture.</p>
+<h2>Kernel</h2>
+<p>When writing code for the Linux kernel, there isn't the luxury of a
+fully featured libc since it expects (and needs) to be in userspace,
+therefore we need to implement the features we need ourselves. Linux
+doesn't need all the features but something like <code>memcmp()</code> is
+definitely a requirement.</p>
+<p>There have been some recent optimisations in <a href="https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=sysdeps/powerpc/powerpc64/power8/memcmp.S;h=46b9c0067ad7cd74a36c4800ebfe03eb1be0311e;hb=dec4a7105edcdbabdcac5f358f5bc5dca4f4ed1b" title="power8 optimised memcmp">glibc</a> from which the
+kernel could benefit too! The question to be asked is, does the glibc
+optimised <code>power8_memcmp()</code> actually go faster or is it all smoke and
+mirrors?</p>
+<h2>Benchmarking <code>memcmp()</code></h2>
+<p>With things like <code>memcmp()</code> it is actually quite easy to choose
+datasets which can make any implementation look good. For example; the
+new <code>power8_memcmp()</code> makes use of the vector unit of the power8
+processor, in order to do so in the kernel there must be a small
+amount of setup code so that the rest of the kernel knows that the
+vector unit has been used and it correctly saves and restores the
+userspace vector registers. This means that <code>power8_memcmp()</code> has a
+slightly larger overhead than the current one, so for small compares
+or compares which are different early on then the newer 'faster'
+<code>power8_memcmp()</code> might actually not perform as well. For any kind of
+large compare however, using the vector unit should outperform a CPU
+register load and compare loop. It is for this reason that I wanted to
+avoid using micro benchmarks and use a 'real world' test as much as
+possible.</p>
+<p>The biggest user of <code>memcmp()</code> in the kernel, at least on POWER is Kernel
+Samepage Merging (KSM). KSM provides code to inspect all the pages of
+a running system to determine if they're identical and deduplicate
+them if possible. This kind of feature allows for memory overcommit
+when used in a KVM host environment as guest kernels are likely to
+have a lot of similar, readonly pages which can be merged with no
+overhead afterwards. In order to determine if the pages are the same
+KSM must do a lot of page sized <code>memcmp()</code>.</p>
+<h2>Performance</h2>
+<p>Performing a lot of page sized <code>memcmp()</code> is the one flaw with this
+test, the sizes of the <code>memcmp()</code> don't vary, hopefully the data will be
+'random' enough that we can still observe differences in the two
+approaches.</p>
+<p>My approach for testing involved getting the delta of <code>ktime_get()</code>
+across calls to <code>memcmp()</code> in <code>memcmp_pages()</code> (mm/ksm.c). This actually
+generated massive amounts of data, so, for consistency the following
+analysis is performed on the first 400MB of deltas collected.</p>
+<p>The host was compiled with <code>powernv_defconfig</code> and run out of a
+ramdisk. For consistency the host was rebooted between each run so as
+to not have any previous tests affect the next. The host was rebooted
+a total of six times, the first three with my 'patched'
+<code>power8_memcmp()</code> kernel was booted the second three times with just
+my data collection patch applied, the 'vanilla' kernel. Both
+kernels are based off <code>4.13-rc3</code>.</p>
+<p>Each boot the following script was run and the resulting deltas file
+saved somewhere before reboot. The command line argument was always
+15.</p>
+<div class="highlight"><pre><span></span><span class="ch">#!/bin/sh</span>
+
+ppc64_cpu --smt<span class="o">=</span>off
+
+<span class="c1">#Host actually boots with ksm off but be sure</span>
+<span class="nb">echo</span> <span class="m">0</span> &gt; /sys/kernel/mm/ksm/run
+
+<span class="c1">#Scan a lot of pages</span>
+<span class="nb">echo</span> <span class="m">999999</span> &gt; /sys/kernel/mm/ksm/pages_to_scan
+
+<span class="nb">echo</span> <span class="s2">&quot;Starting QEMUs&quot;</span>
+<span class="nv">i</span><span class="o">=</span><span class="m">0</span>
+<span class="k">while</span> <span class="o">[</span> <span class="s2">&quot;</span><span class="nv">$i</span><span class="s2">&quot;</span> -lt <span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span> <span class="o">]</span> <span class="p">;</span> <span class="k">do</span>
+    qemu-system-ppc64 -smp <span class="m">1</span> -m 1G -nographic -vga none <span class="se">\</span>
+        -machine pseries,accel<span class="o">=</span>kvm,kvm-type<span class="o">=</span>HV <span class="se">\</span>
+        -kernel guest.kernel  -initrd guest.initrd <span class="se">\</span>
+        -monitor pty -serial pty <span class="p">&amp;</span>
+    <span class="nv">i</span><span class="o">=</span><span class="k">$(</span>expr <span class="nv">$i</span> + <span class="m">1</span><span class="k">)</span><span class="p">;</span>
+<span class="k">done</span>
+
+<span class="nb">echo</span> <span class="s2">&quot;Letting all the VMs boot&quot;</span>
+sleep <span class="m">30</span>
+
+<span class="nb">echo</span> <span class="s2">&quot;Turning KSM om&quot;</span>
+<span class="nb">echo</span> <span class="m">1</span> &gt; /sys/kernel/mm/ksm/run
+
+<span class="nb">echo</span> <span class="s2">&quot;Letting KSM do its thing&quot;</span>
+sleep 2m
+
+<span class="nb">echo</span> <span class="m">0</span> &gt; /sys/kernel/mm/ksm/run
+
+dd <span class="k">if</span><span class="o">=</span>/sys/kernel/debug/ksm/memcmp_deltas <span class="nv">of</span><span class="o">=</span>deltas <span class="nv">bs</span><span class="o">=</span><span class="m">4096</span> <span class="nv">count</span><span class="o">=</span><span class="m">100</span>
+</pre></div>
+
+
+<p>The guest kernel was a <code>pseries_le_defconfig</code> <code>4.13-rc3</code> with the same
+ramdisk the host used. It booted to the login prompt and was left to
+idle.</p>
+<h2>Analysis</h2>
+<p>A variety of histograms were then generated in an attempt to see how
+the behaviour of <code>memcmp()</code> changed between the two implementations.
+It should be noted here that the y axis in the following graphs is a
+log scale as there were a lot of small deltas. The first observation
+is that the vanilla kernel had more smaller deltas, this is made
+particularly evident by the 'tally' points which are a running total
+of all deltas with less than the tally value.</p>
+<p><img alt="Sample 1 - Deltas below 200ns" src="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">
+Graph 1 depicting the vanilla kernel having a greater amount of small
+(sub 20ns) deltas than the patched kernel. The green points rise
+faster (left to right) and higher than the yellow points.</p>
+<p>Still looking at the tallies, <a href="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">graph 1</a> also shows that the tally
+of deltas is very close by the 100ns mark, which means that the
+overhead of <code>power8_memcmp()</code> is not too great.</p>
+<p>The problem with looking at only deltas under 200ns is that the
+performance results we want, that is, the difference between the
+algorithms is being masked by things like cache effects. To avoid this
+problem is may be wise to look at longer running (larger delta)
+<code>memcmp()</code> calls.</p>
+<p>The following graph plots all deltas below 5000ns - still relatively
+short calls to <code>memcmp()</code> but an interesting trend emerges:
+<img alt="Sample 1 - Deltas below 5000ns" src="/images/power8_memcmp/deltas1-5000.png" title="Sample 1: Deltas below 5000ns">
+Graph 2 shows that above 500ns the blue (patched kernel) points appear
+to have all shifted left with respect to the purple (vanilla kernel)
+points. This shows that for any <code>memcmp()</code> which will take more than
+500ns to get a result it is favourable to use <code>power8_memcmp()</code> and it
+is only detrimental to use  <code>power8_memcmp()</code> if the time will be
+under 50ns (a conservative estimate).</p>
+<p>It is worth noting that <a href="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">graph 1</a> and <a href="/images/power8_memcmp/deltas1-5000.png" title="Sample 1: Deltas below 5000ns">graph 2</a> are generated by
+combining the first run of data collected from the vanilla and patched
+kernels. All the deltas for both runs are can be viewed separately
+<a href="/images/power8_memcmp/vanilla_deltas1.png" title="All vanilla deltas">here for vanilla</a> and <a href="/images/power8_memcmp/patched_deltas1.png" title="All patched deltas">here for patched</a>. Finally, the results
+from the other four runs look very much identical and provide me with
+a fair amount of confidence that these results make sense.</p>
+<h2>Conclusions</h2>
+<p>It is important to separate possible KSM optimisations with generic
+<code>memcmp()</code> optimisations, for example, perhaps KSM shouldn't be
+calling <code>memcmp()</code> if it suspects the first byte will differ. On the
+other hand, things that <code>power8_memcmp()</code> could do (which it currently
+doesn't) is check the length parameter and perhaps avoid the overhead
+of enabling kernel vector if the compare is less than some small
+amount of bytes.</p>
+<p>It does seem like at least for the 'average case' glibcs
+<code>power8_memcmp()</code> is an improvement over what we have now.</p>
+<h2>Future work</h2>
+<p>A second round of data collection and plotting of delta vs position of
+first byte to differ should confirm these results, this would mean a
+more invasive patch to KSM.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/06/24/kernel-interfaces-and-vdso-test/" rel="bookmark" title="Permalink to Kernel interfaces and vDSO test">Kernel interfaces and vDSO test</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-06-24T16:30:00+10:00"> Fri 24 June 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h3>Getting Suckered</h3>
+<p>Last week a colleague of mine came up to me and showed me some of the
+<abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> on PowerPC and asked why on earth does it fail
+<a href="https://github.com/nlynch-mentor/vdsotest">vdsotest</a>. I should come
+clean at this point and admit that I knew very little about the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr>
+and hadn't heard of vdsotest. I had to admit to this colleague that I
+had no idea everything looked super sane.</p>
+<p>Unfortunately (for me) I got hooked, vdsotest was saying it was
+getting '22' instead of '-1' and it was the case where the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> would
+call into the kernel. It plagued me all night, 22 is so suspicious.
+Right before I got to work the next morning I had an epiphany, "I bet
+22 is EINVAL".</p>
+<h3>Virtual Dynamically linked Shared Objects</h3>
+<p>The <a href="https://en.wikipedia.org/wiki/VDSO"><abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr></a> is a mechanism to
+expose some kernel functionality into userspace to avoid the cost of a
+context switch into kernel mode. This is a great feat of engineering,
+avoiding the context switch can have a dramatic speedup for userspace
+code. Obviously not all kernel functionality can be placed into
+userspace and even for the functionality which can,
+there may be edge cases in which the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> needs to ask the kernel.</p>
+<p>Who tests the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr>? For the portion that lies exclusively in userspace it
+will escape all testing of the syscall interface which is really what
+kernel developers are so focused on not breaking. Enter Nathan Lynch
+with <a href="https://github.com/nlynch-mentor/vdsotest">vdsotest</a> who has
+done some great work!</p>
+<h3>The Kernel</h3>
+<p>When the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> can't get the correct value without the kernel, it
+simply calls into the kernel because the kernel is the definitive
+reference for every syscall. On PowerPC something like this happens
+(sorry, our <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> is 100% asm):
+<sup id="fnref-1"><a class="footnote-ref" href="#fn-1">1</a></sup></p>
+<div class="highlight"><pre><span></span><span class="err">/*</span>
+ <span class="err">*</span> <span class="nf">Exact</span> <span class="no">prototype</span> <span class="no">of</span> <span class="no">clock_gettime</span><span class="p">()</span>
+ <span class="err">*</span>
+ <span class="err">*</span> <span class="nf">int</span> <span class="no">__kernel_clock_gettime</span><span class="p">(</span><span class="no">clockid_t</span> <span class="no">clock_id</span><span class="p">,</span> <span class="no">struct</span> <span class="no">timespec</span> <span class="p">*</span><span class="no">tp</span><span class="p">)</span><span class="c">;</span>
+ <span class="p">*</span>
+ <span class="err">*/</span>
+<span class="nf">V_FUNCTION_BEGIN</span><span class="p">(</span><span class="no">__kernel_clock_gettime</span><span class="p">)</span>
+  <span class="na">.cfi_startproc</span>
+    <span class="err">/*</span> <span class="nf">Check</span> <span class="no">for</span> <span class="no">supported</span> <span class="no">clock</span> <span class="no">IDs</span> <span class="p">*</span><span class="err">/</span>
+    <span class="nf">cmpwi</span>   <span class="no">cr0</span><span class="p">,</span><span class="no">r3</span><span class="p">,</span><span class="no">CLOCK_REALTIME</span>
+    <span class="nf">cmpwi</span>   <span class="no">cr1</span><span class="p">,</span><span class="no">r3</span><span class="p">,</span><span class="no">CLOCK_MONOTONIC</span>
+    <span class="nf">cror</span>    <span class="no">cr0</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span><span class="p">,</span><span class="no">cr0</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span><span class="p">,</span><span class="no">cr1</span><span class="p">*</span><span class="mi">4</span><span class="err">+</span><span class="no">eq</span>
+    <span class="nf">bne</span> <span class="no">cr0</span><span class="p">,</span><span class="mi">99</span><span class="no">f</span>
+
+    <span class="err">/*</span> <span class="err">[</span><span class="nf">snip</span><span class="p">]</span> <span class="p">*</span><span class="err">/</span>
+
+    <span class="err">/*</span>
+     <span class="err">*</span> <span class="nf">syscall</span> <span class="no">fallback</span>
+     <span class="err">*/</span>
+<span class="err">99:</span>
+    <span class="nf">li</span>  <span class="no">r0</span><span class="p">,</span><span class="no">__NR_clock_gettime</span>
+    <span class="nf">sc</span>
+    <span class="nf">blr</span>
+</pre></div>
+
+
+<p>For those not familiar, this couldn't be more simple. The start checks
+to see if it is a clock id that the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> can handle and if not it jumps
+to the 99 label. From here simply load the syscall number, jump to the
+kernel and branch to link register aka 'return'.  In this case the
+'return' statement would return to the userspace code which called the
+<abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> function.</p>
+<p>Wait, having the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> calling into the kernel call gets us the wrong
+result? Or course it should, vdsotest is assuming a C ABI with return
+values and errno but the kernel doesn't do that, the kernel ABI is
+different. How does this even work on x86? Ohhhhh vdsotest does <sup id="fnref-2"><a class="footnote-ref" href="#fn-2">2</a></sup></p>
+<div class="highlight"><pre><span></span><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">record_syscall_result</span><span class="p">(</span><span class="k">struct</span> <span class="n">syscall_result</span> <span class="o">*</span><span class="n">res</span><span class="p">,</span>
+                     <span class="kt">int</span> <span class="n">sr_ret</span><span class="p">,</span> <span class="kt">int</span> <span class="n">sr_errno</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="cm">/* Calling the vDSO directly instead of through libc can lead to:</span>
+<span class="cm">     * - The vDSO code punts to the kernel (e.g. unrecognized clock id).</span>
+<span class="cm">     * - The kernel returns an error (e.g. -22 (-EINVAL))</span>
+<span class="cm">     * So we need to recognize this situation and fix things up.</span>
+<span class="cm">     * Fortunately we&#39;re dealing only with syscalls that return -ve values</span>
+<span class="cm">     * on error.</span>
+<span class="cm">     */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sr_ret</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">sr_errno</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sr_errno</span> <span class="o">=</span> <span class="o">-</span><span class="n">sr_ret</span><span class="p">;</span>
+        <span class="n">sr_ret</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">struct</span> <span class="n">syscall_result</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">sr_ret</span> <span class="o">=</span> <span class="n">sr_ret</span><span class="p">,</span>
+        <span class="p">.</span><span class="n">sr_errno</span> <span class="o">=</span> <span class="n">sr_errno</span><span class="p">,</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>That little hack isn't working on PowerPC and here's why:</p>
+<p>The kernel puts the return value in the ABI specified return register
+(r3) and uses a condition register bit (condition register field 0, SO
+bit), so unlike x86 on error the return value isn't negative. To make
+matters worse, the condition register is very difficult to access from
+C. Depending on your definition of 'access from C' you might consider
+it impossible, a fixup like that would be impossible.</p>
+<h3>Lessons learnt</h3>
+<ul>
+<li><abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> supplied functions aren't quite the same as their libc
+counterparts. Unless you have very good reason, and to be fair,
+vdsotest does have a very good reason, always access the <abbr title="Virtual Dynamically linked Shared Objects">vDSO</abbr> through
+libc</li>
+<li>Kernel interfaces aren't C interfaces, yep, they're close but they
+  aren't the same</li>
+<li>22 is in fact EINVAL</li>
+<li>Different architectures are... Different!</li>
+<li>Variety is the spice of life</li>
 </ul>
-
-
-<ul class="main-navigation">
-      <li >
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Author: Cyril Bur</h1>
-    	</header>
-
-    	<div id="blog-archives">
-            <h2>2017</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/">memcmp() for POWER8 - part II</a></h1>
-                        <time datetime="2017-09-01 12:00:00+10:00" pubdate>
-                            <span class="month">Sep</span>
-                            <span class="day">01</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">memcmp() for POWER8</a></h1>
-                        <time datetime="2017-08-07 12:00:00+10:00" pubdate>
-                            <span class="month">Aug</span>
-                            <span class="day">07</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/06/24/kernel-interfaces-and-vdso-test/">Kernel interfaces and vDSO test</a></h1>
-                        <time datetime="2016-06-24 16:30:00+10:00" pubdate>
-                            <span class="month">Jun</span>
-                            <span class="day">24</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/development.html'>Development</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2015</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/11/06/evolving-into-a-systems-programmer/">Evolving into a systems programmer</a></h1>
-                        <time datetime="2015-11-06 11:13:00+11:00" pubdate>
-                            <span class="month">Nov</span>
-                            <span class="day">06</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/education.html'>Education</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/05/21/openpower-powers-forward/">OpenPOWER Powers Forward</a></h1>
-                        <time datetime="2015-05-21 11:29:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">21</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/">memcmp() for POWER8 - part II</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">memcmp() for POWER8</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/06/24/kernel-interfaces-and-vdso-test/">Kernel interfaces and vDSO test</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2015/11/06/evolving-into-a-systems-programmer/">Evolving into a systems programmer</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2015/05/21/openpower-powers-forward/">OpenPOWER Powers Forward</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
-
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
-
-
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
-
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2015&ndash;2017  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+<p>P.S I have a hacky patch waiting review</p>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn-1">
+<p>arch/powerpc/kernel/vdso64/gettimeofday.S&#160;<a class="footnote-backref" href="#fnref-1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn-2">
+<p>src/vdsotest.h&#160;<a class="footnote-backref" href="#fnref-2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2015/11/06/evolving-into-a-systems-programmer/" rel="bookmark" title="Permalink to Evolving into a systems programmer">Evolving into a systems programmer</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2015-11-06T11:13:00+11:00"> Fri 06 November 2015 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>In a previous life I tutored first year computing. The university I
+attended had a policy of using C to introduce first years to programming.
+One of the most rewarding aspects of teaching is opening doors of
+possibility to people by sharing my knowledge.</p>
+<p>Over the years I had a mixture of computer science or computer engineering
+students as well as other disciplines of engineering who were required to
+learn the basics (notably electrical and mechanical). Each class was
+different and the initial knowledge always varied greatly. The beauty of
+teaching C meant that there was never someone who truly knew it all, heck,
+I didn't and still don't. The other advantage of teaching C is that I could
+very quickly spot the hackers, the shy person at the back of the room who's
+eyes light up when you know you've correctly explained pointers (to them
+anyway) or when asked "What happens if you use a negative index into an
+array" and the smile they would make upon hearing "What do you think happens".</p>
+<p>Right there I would see the makings of a hacker, and this post is dedicated
+to you or to anyone who wants to be a hacker. I've been asked "What did you
+do to get where you are?", "How do I get into Linux?" (vague much) at
+careers fairs. I never quite know what to say, here goes a braindump.</p>
+<p>Start with the basics, one of the easiest way we tested the first years was
+to tell them they can't use parts of libc. That was a great exam, taking
+aside those who didn't read the question and used <code>strlen()</code> when they were
+explicitly told they couldn't <code>#include &lt;string.h&gt;</code> a true hacker doesn't
+need libc, understand it won't always be there. I thought of this example
+because only two weeks ago I was writing code in an environment where I
+didn't have libc. Ok sure, if you've got it, use it, just don't crumble
+when you don't. Oh how I wish I could have told those students who argued
+that it was a pointless question that they were objectively wrong.</p>
+<p>Be a fan of assembly, don't be afraid of it, it doesn't bite and it can be
+a lot of fun. I wouldn't encourage you to dive right into the PowerISA,
+it's intense but perhaps understand the beauty of GCC, know what it's doing
+for you. There is a variety of little 8 bit processors you can play with
+these days.</p>
+<p>At all levels of my teaching I saw almost everyone get something which
+'worked', and that's fine, it probably does but I'm here to tell you that
+it doesn't work until you know why it works. I'm all for the 'try it and
+see' approach but once you've tried it you have to explain why the
+behaviour changed otherwise you didn't fix it. As an extension to that,
+know how your tools work, I don't think anyone would expect you to be able
+to write tools to the level of complexity of GCC or GDB or Valgrind but
+have a rough idea as to how they achieve their goals.</p>
+<p>A hacker is paranoid, yes, <code>malloc()</code> fails. Linux might just decide now
+isn't a good time for you to <code>open()</code> and your <code>fopen()</code> calling function had
+better be cool with that. A hacker also doesn't rely on the kindness of the
+operating system theres an <code>munmap()</code> for a reason. Nor should you even
+completely trust it, what are you leaving around in memory?</p>
+<p>Above all do a it for the fun of it, so many of my students asked how I
+knew everything I knew (I was only a year ahead of them in my first year of
+teaching) and put simply, write code on a Saturday night.</p>
+<p>None of these things do or don't make you a hacker, being a hacker is a
+frame of mind and a way of thinking but all of the above helps.</p>
+<p>Unfortunately there isn't a single path, I might even say it is a path that
+chooses you. Odds are you're here because you approached me at some point
+and asked me one of those questions I never quite know how to answer.
+Perhaps this is the path, at the very least you're asking questions and
+approaching people. I'm hope I did on the day, but once again, all the very
+best with your endeavours into the future</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2015/05/21/openpower-powers-forward/" rel="bookmark" title="Permalink to OpenPOWER Powers Forward">OpenPOWER Powers Forward</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2015-05-21T11:29:00+10:00"> Thu 21 May 2015 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>I wrote this blog post late last year, it is very relevant for this blog though so I'll repost it here.</p>
+<p>With the launch of <a href="http://www.tyan.com/campaign/openpower/">TYAN's OpenPOWER reference system</a> now is a good time to reflect on the team responsible for so much of the research, design and development behind this very first ground breaking step of <a href="http://openpowerfoundation.org/">OpenPOWER</a> with their start to finish involvement of this new Power platform.</p>
+<p>ADL Canberra have been integral to the success of this launch providing the Open Power Abstraction Layer (OPAL) firmware. OPAL breathes new life into Linux on Power finally allowing Linux to run on directly on the hardware.
+While OPAL harnesses the hardware, ADL Canberra significantly improved Linux to sit on top and take direct control of IBMs new Power8 processor without needing to negotiate with a hypervisor. With all the Linux expertise present at ADL Canberra it's no wonder that a Linux based bootloader was developed to make this system work. Petitboot leverage's all the resources of the Linux kernel to create a light, fast and yet extremely versatile bootloader. Petitboot provides a massive amount of tools for debugging and system configuration without the need to load an operating system.</p>
+<p>TYAN have developed great and highly customisable hardware. ADL Canberra have been there since day 1 performing vital platform enablement (bringup) of this new hardware. ADL Canberra have put all the work into the entire software stack, low level work to get OPAL and Linux to talk to the new BMC chip as well as the higher level, enabling to run Linux in either endian and Linux is even now capable of virtualising KVM guests in either endian irrespective of host endian. Furthermore a subset of ADL Canberra have been key to getting the Coherent Accelerator Processor Interface (CAPI) off the ground, enabling more almost endless customisation and greater diversity within the OpenPOWER ecosystem.</p>
+<p>ADL Canberra is the home for Linux on Power and the beginning of the OpenPOWER hardware sees much of the hard work by ADL Canberra come to fruition.</p> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>

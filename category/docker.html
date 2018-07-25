@@ -1,215 +1,270 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Category: Docker &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles in the Docker category</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/07/27/get-off-my-lawn-separating-docker-workloads-using-cgroups/" rel="bookmark" title="Permalink to Get off my lawn: separating Docker workloads using cgroups">Get off my lawn: separating Docker workloads using cgroups</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-07-27T13:30:00+10:00"> Wed 27 July 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>On my team, we do two different things in our Continuous Integration setup: build/functional tests, and performance tests. Build tests simply test whether a project builds, and, if the project provides a functional test suite, that the tests pass. We do a lot of MySQL/MariaDB testing this way. The other type of testing we do is performance tests: we build a project and then run a set of benchmarks against it. Python is a good example here.</p>
+<p>Build tests want as much grunt as possible. Performance tests, on the other hand, want a stable, isolated environment. Initially, we set up Jenkins so that performance and build tests never ran at the same time. Builds would get the entire machine, and performance tests would never have to share with anyone.</p>
+<p>This, while simple and effective, has some downsides. In POWER land, our machines are quite beefy. For example, one of the boxes I use - an S822L - has 4 sockets, each with 4 cores. At SMT-8 (an 8 way split of each core) that gives us 4 x 4 x 8 = 128 threads. It seems wasteful to lock this entire machine - all 128 threads - just so as to isolate a single-threaded test.<sup id="fnref-1"><a class="footnote-ref" href="#fn-1">1</a></sup></p>
+<p>So, <strong>can we partition our machine so that we can be running two different sorts of processes in a sufficiently isolated way?</strong></p>
+<p>What counts as 'sufficiently isolated'? Well, my performance tests are CPU bound, so I want CPU isolation. I also want memory, and in particular memory bandwith to be isolated. I don't particularly care about IO isolation as my tests aren't IO heavy. Lastly, I have a couple of tests that are very multithreaded, so I'd like to have enough of a machine for those test results to be interesting.</p>
+<p>For CPU isolation we have CPU affinity. We can also do something similar with memory. On a POWER8 system, memory is connected to individual P8s, not to some central point. This is a 'Non-Uniform Memory Architecture' (NUMA) setup: the directly attached memory will be very fast for a processor to access, and memory attached to other processors will be slower to access. An accessible guide (with very helpful diagrams!) is <a href="http://www.redbooks.ibm.com/redpapers/pdfs/redp5098.pdf">the relevant RedBook (PDF)</a>, chapter 2.</p>
+<p>We could achieve the isolation we want by dividing up CPUs and NUMA nodes between the competing workloads. Fortunately, all of the hardware NUMA information is plumbed nicely into Linux. Each P8 socket gets a corresponding NUMA node. <code>lscpu</code> will tell you what CPUs correspond to which NUMA nodes (although what it calls a CPU we would call a hardware thread). If you install <code>numactl</code>, you can use <code>numactl -H</code> to get even more details.</p>
+<p>In our case, the relevant <code>lscpu</code> output is thus:</p>
+<div class="highlight"><pre><span></span>NUMA node0 CPU(s):     0-31
+NUMA node1 CPU(s):     96-127
+NUMA node16 CPU(s):    32-63
+NUMA node17 CPU(s):    64-95
+</pre></div>
+
+
+<p>Now all we have to do is find some way to tell Linux to restrict a group of processes to a particular NUMA node and the corresponding CPUs. How? Enter control groups, or <code>cgroups</code> for short. Processes can be put into a cgroup, and then a cgroup controller can control the resouces allocated to the cgroup. Cgroups are hierarchical, and there are controllers for a number of different ways you could control a group of processes. Most helpfully for us, there's one called <code>cpuset</code>, which can control CPU affinity, and restrict memory allocation to a NUMA node.</p>
+<p>We then just have to get the processes into the relevant cgroup. Fortunately, Docker is incredibly helpful for this!<sup id="fnref-2"><a class="footnote-ref" href="#fn-2">2</a></sup> Docker containers are put in the <code>docker</code> cgroup. Each container gets it's own cgroup under the docker cgroup, and fortunately Docker deals well with the somewhat broken state of cpuset inheritance.<sup id="fnref-3"><a class="footnote-ref" href="#fn-3">3</a></sup> So it suffices to create a cpuset cgroup for docker, and allocate some resources to it, and Docker will do the rest. Here we'll allocate the last 3 sockets and NUMA nodes to Docker containers:</p>
+<div class="highlight"><pre><span></span>cgcreate -g cpuset:docker
+<span class="nb">echo</span> <span class="m">32</span>-127 &gt; /sys/fs/cgroup/cpuset/docker/cpuset.cpus
+<span class="nb">echo</span> <span class="m">1</span>,16-17 &gt; /sys/fs/cgroup/cpuset/docker/cpuset.mems
+<span class="nb">echo</span> <span class="m">1</span> &gt; /sys/fs/cgroup/cpuset/docker/cpuset.mem_hardwall
+</pre></div>
+
+
+<p><code>mem_hardwall</code> prevents memory allocations under docker from spilling over into the one remaining NUMA node.</p>
+<p>So, does this work? I created a container with sysbench and then ran the following:</p>
+<div class="highlight"><pre><span></span>root@0d3f339d4181:/# sysbench --test<span class="o">=</span>cpu --num-threads<span class="o">=</span><span class="m">128</span> --max-requests<span class="o">=</span><span class="m">10000000</span> run
+</pre></div>
+
+
+<p>Now I've asked for 128 threads, but the cgroup only has CPUs/hwthreads 32-127 allocated. So If I run htop, I shouldn't see any load on CPUs 0-31. What do I actually see?</p>
+<p><img alt="htop screenshot, showing load only on CPUs 32-127" src="/images/dja/cgroup1.png"></p>
+<p>It works! Now, we create a cgroup for performance tests using the first socket and NUMA node:</p>
+<div class="highlight"><pre><span></span>cgcreate -g cpuset:perf-cgroup
+<span class="nb">echo</span> <span class="m">0</span>-31 &gt; /sys/fs/cgroup/cpuset/perf-cgroup/cpuset.cpus
+<span class="nb">echo</span> <span class="m">0</span> &gt; /sys/fs/cgroup/cpuset/perf-cgroup/cpuset.mems
+<span class="nb">echo</span> <span class="m">1</span> &gt; /sys/fs/cgroup/cpuset/perf-cgroup/cpuset.mem_hardwall
+</pre></div>
+
+
+<p>Docker conveniently lets us put new containers under a different cgroup, which means we can simply do:</p>
+<div class="highlight"><pre><span></span>dja@p88 ~&gt; docker run -it --rm --cgroup-parent<span class="o">=</span>/perf-cgroup/ ppc64le/ubuntu bash
+root@b037049f94de:/# <span class="c1"># ... install sysbench</span>
+root@b037049f94de:/# sysbench --test<span class="o">=</span>cpu --num-threads<span class="o">=</span><span class="m">128</span> --max-requests<span class="o">=</span><span class="m">10000000</span> run
+</pre></div>
+
+
+<p>And the result?</p>
+<p><img alt="htop screenshot, showing load only on CPUs 0-31" src="/images/dja/cgroup2.png"></p>
+<p>It works! My benchmark results also suggest this is sufficient isolation, and the rest of the team is happy to have more build resources to play with.</p>
+<p>There are some boring loose ends to tie up: if a build job does anything outside of docker (like clone a git repo), that doesn't come under the docker cgroup, and we have to interact with systemd. Because systemd doesn't know about cpuset, this is <em>quite</em> fiddly. We also want this in a systemd unit so it runs on start up, and we want some code to tear it down. But I'll spare you the gory details.</p>
+<p>In summary, cgroups are surprisingly powerful and simple to work with, especially in conjunction with Docker and NUMA on Power!</p>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn-1">
+<p>It gets worse! Before the performance test starts, all the running build jobs must drain. If we have 8 Jenkins executors running on the box, and a performance test job is the next in the queue, we have to wait for 8 running jobs to clear. If they all started at different times and have different runtimes, we will inevitably spend a fair chunk of time with the machine at less than full utilisation while we're waiting.&#160;<a class="footnote-backref" href="#fnref-1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn-2">
+<p>At least, on Ubuntu 16.04. I haven't tested if this is true anywhere else.&#160;<a class="footnote-backref" href="#fnref-2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn-3">
+<p>I hear this is getting better. It is also why systemd hasn't done cpuset inheritance yet.&#160;<a class="footnote-backref" href="#fnref-3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2015/10/30/docker-just-stop-using-aufs/" rel="bookmark" title="Permalink to Docker: Just Stop Using AUFS">Docker: Just Stop Using AUFS</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2015-10-30T13:30:00+11:00"> Fri 30 October 2015 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>Docker's default storage driver on most Ubuntu installs is AUFS.</p>
+<p>Don't use it. Use Overlay instead. Here's why.</p>
+<p>First, some background. I'm testing the performance of the basic LAMP
+stack on POWER. (LAMP is Linux + Apache + MySQL/MariaDB + PHP, by the
+way.) To do more reliable and repeatable tests, I do my builds and
+tests in Docker containers. (See <a href="/blog/2015/10/12/a-tale-of-two-dockers/">my previous post</a> for more info.)</p>
+<p>Each test downloads the source of Apache, MariaDB and PHP, and builds
+them. This should be quick: the POWER8 system I'm building on has 160
+hardware threads and 128 GB of memory. But I was finding that it was
+only just keeping pace with a 2 core Intel VM on BlueMix.</p>
+<p>Why? Well, my first point of call was to observe a compilation under
+<code>top</code>. The header is below.</p>
+<p><img alt="top header, showing over 70 percent of CPU time spent in the kernel" src="/images/dja/aufs/top-bad.png"></p>
+<p>Over 70% of CPU time is spent in the kernel?! That's weird. Let's dig
+deeper.</p>
+<p>My next port of call for analysis of CPU-bound workloads is
+<code>perf</code>. <code>perf top</code> reports astounding quantities of time in
+spin-locks:</p>
+<p><img alt="display from perf top, showing 80 percent of time in a spinlock" src="/images/dja/aufs/perf-top-spinlock.png"></p>
+<p><code>perf top -g</code> gives us some more information: the time is in system
+calls. <code>open()</code> and <code>stat()</code> are the key culprits, and we can see a
+number of file system functions are in play in the call-chains of the
+spinlocks.</p>
+<p><img alt="display from perf top -g, showing syscalls and file ops" src="/images/dja/aufs/perf-top-syscalls.png"></p>
+<p>Why are open and stat slow? Well, I know that the files are on an AUFS
+mount. (<code>docker info</code> will tell you what you're using if you're not
+sure.) So, being something of a kernel hacker, I set out to find out
+why. This did not go well. AUFS isn't upstream, it's a separate patch
+set. Distros have been trying to deprecate it for years. Indeed, RHEL
+doesn't ship it. (To it's credit, Docker seems to be trying to move
+away from it.)</p>
+<p>Wanting to avoid the minor nightmare that is an out-of-tree patchset,
+I looked at other storage drivers for Docker. <a href="https://jpetazzo.github.io/assets/2015-03-03-not-so-deep-dive-into-docker-storage-drivers.html">This presentation is particularly good.</a>
+My choices are pretty simple: AUFS, btrfs, device-mapper or
+Overlay. Overlay was an obvious choice: it doesn't need me to set up
+device mapper on a cloud VM, or reformat things as btrfs.</p>
+<p>It's also easy to set up on Ubuntu:</p>
+<ul>
+<li>
+<p>export/save any docker containers you care about.</p>
+</li>
+<li>
+<p>add <code>--storage-driver=overlay</code> option to <code>DOCKER_OPTS</code> in <code>/etc/default/docker</code>, and restart docker (<code>service docker restart</code>)</p>
+</li>
+<li>
+<p>import/load the containters you exported</p>
+</li>
+<li>
+<p>verify that things work, then clear away your old storage directory (<code>/var/lib/docker/aufs</code>). </p>
+</li>
 </ul>
-
-
-<ul class="main-navigation">
-      <li >
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li class="active">
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Category: Docker</h1>
-    	</header>
-
-    	<div id="blog-archives">
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/07/27/get-off-my-lawn-separating-docker-workloads-using-cgroups/">Get off my lawn: separating Docker workloads using cgroups</a></h1>
-                        <time datetime="2016-07-27 13:30:00+10:00" pubdate>
-                            <span class="month">Jul</span>
-                            <span class="day">27</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/docker.html'>Docker</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2015</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/10/30/docker-just-stop-using-aufs/">Docker: Just Stop Using AUFS</a></h1>
-                        <time datetime="2015-10-30 13:30:00+11:00" pubdate>
-                            <span class="month">Oct</span>
-                            <span class="day">30</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/docker.html'>Docker</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/10/12/a-tale-of-two-dockers/">A tale of two Dockers</a></h1>
-                        <time datetime="2015-10-12 14:14:00+11:00" pubdate>
-                            <span class="month">Oct</span>
-                            <span class="day">12</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/docker.html'>Docker</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/07/27/get-off-my-lawn-separating-docker-workloads-using-cgroups/">Get off my lawn: separating Docker workloads using cgroups</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2015/10/30/docker-just-stop-using-aufs/">Docker: Just Stop Using AUFS</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2015/10/12/a-tale-of-two-dockers/">A tale of two Dockers</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
-
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
-
-
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
-
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2015&ndash;2016  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+<p>Having moved my base container across, I set off another build.</p>
+<p>The first thing I noticed is that images are much slower to create with Overlay. But once that finishes, and a compile starts, things run much better:</p>
+<p><img alt="top, showing close to zero system time, and around 90 percent user time" src="/images/dja/aufs/top-good.png"></p>
+<p>The compiles went from taking painfully long to astonishingly fast. Winning.</p>
+<p>So in conclusion:</p>
+<ul>
+<li>
+<p>If you use Docker for something that involves open()ing or stat()ing files</p>
+</li>
+<li>
+<p>If you want your machine to do real work, rather than spin in spinlocks</p>
+</li>
+<li>
+<p>If you want to use code that's upstream and thus much better supported</p>
+</li>
+<li>
+<p>If you want something less disruptive than the btrfs or dm storage drivers</p>
+</li>
+</ul>
+<p>...then drop AUFS and switch to Overlay today.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2015/10/12/a-tale-of-two-dockers/" rel="bookmark" title="Permalink to A tale of two Dockers">A tale of two Dockers</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2015-10-12T14:14:00+11:00"> Mon 12 October 2015 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>(This was published in an internal technical journal last week, and is now being published here. If you already know what Docker is, feel free to skim the first half.)</p>
+<p>Docker seems to be the flavour of the month in IT. Most attention is focussed on using Docker for the deployment of production services. But that's not all Docker is good for. Let's explore Docker, and two ways I use it as a software developer.</p>
+<p>Docker: what is it?</p>
+<p>Docker is essentially a set of tools to deal with <em>containers</em> and <em>images</em>. </p>
+<p>To make up an artificial example, say you are developing a web app. You first build an <em>image</em>: a file system which contains the app, and some associated metadata. The app has to run on something, so you also install things like Python or Ruby and all the necessary libraries, usually by installing a minimal Ubuntu and any necessary packages.<sup id="fnref-1"><a class="footnote-ref" href="#fn-1">1</a></sup> You then run the image inside an isolated environment called a <em>container</em>.</p>
+<p>You can have multiple containers running the same image, (for example, your web app running across a fleet of servers) and the containers don't affect each other.  Why? Because Docker is designed around the concept of <em>immutability</em>. Containers can write to the image they are running, but the changes are specific to that container, and aren't preserved beyond the life of the container.<sup id="fnref-2"><a class="footnote-ref" href="#fn-2">2</a></sup> Indeed, once built, images can't be changed at all, only rebuilt from scratch.</p>
+<p>However, as well as enabling you to easily run multiple copies, another upshot of immutability is that if your web app allows you to upload photos, and you restart the container, your photos will be gone. Your web app needs to be designed to store all of the data outside of the container, sending it to a dedicated database or object store of some sort.</p>
+<p>Making your application Docker friendly is significantly more work than just spinning up a virtual machine and installing stuff. So what does all this extra work get you? Three main things: isolation, control and, as mentioned, immutability. </p>
+<p><em>Isolation</em> makes containers easy to migrate and deploy, and easy to update. Once an image is built, it can be copied to another system and launched. Isolation also makes it easy to update software your app depends on: you rebuild the image with software updates, and then just deploy it. You don't have to worry about service A relying on version X of a library while service B depends on version Y; it's all self contained. </p>
+<p><em>Immutability</em> also helps with upgrades, especially when deploying them across multiple servers. Normally, you would upgrade your app on each server, and have to make sure that every server gets all the same sets of updates. With Docker, you don't upgrade a running container. Instead, you rebuild your Docker image and re-deploy it, and you then know that the same version of everything is running everywhere. This immutability also guards against the situation where you have a number of different servers that are all special snowflakes with their own little tweaks, and you end up with a fractal of complexity.</p>
+<p>Finally, Docker offers a lot of <em>control</em> over containers, and for a low performance penalty. Docker containers can have their CPU, memory and network controlled easily, without the overhead of a full virtual machine. This makes it an attractive solution for running untrusted executables.<sup id="fnref-3"><a class="footnote-ref" href="#fn-3">3</a></sup></p>
+<p>As an aside: despite the hype, very little of this is actually particularly new. Isolation and control are not new problems. All Unixes, including Linux, support 'chroots'. The name comes from “change root”: the system call changes the processes idea of what the file system root is, making it impossible for it to access things outside of the new designated root directory.  FreeBSD has jails, which are more powerful, Solaris has Zones, and AIX has WPARs. Chroots are fast and low overhead. However, they offer much lower ability to control the use of system resources. At the other end of the scale, virtual machines (which have been around since ancient IBM mainframes) offer isolation much better than Docker, but with a greater performance hit.</p>
+<p>Similarly, immutability isn't really new: Heroku and AWS Spot Instances are both built around the model that you get resources in a known, consistent state when you start, but in both cases your changes won't persist. In the development world, modern CI systems like Travis CI also have this immutable or disposable model – and this was originally built on VMs. Indeed, with a little bit of extra work, both chroots and VMs can give the same immutability properties that Docker gives.</p>
+<p>The control properties that Docker provides are largely as a result of leveraging some Linux kernel concepts, most notably something called namespaces.</p>
+<p>What Docker does well is not something novel, but the engineering feat of bringing together fine-grained control, isolation and immutability, and – importantly – a tool-chain that is easier to use than any of the alternatives. Docker's tool-chain eases a lot of pain points with regards to building containers: it's vastly simpler than chroots, and easier to customise than most VM setups. Docker also has a number of engineering tricks to reduce the disk space overhead of isolation.</p>
+<p>So, to summarise: Docker provides a toolkit for isolated, immutable, finely controlled containers to run executables and services.</p>
+<h2>Docker in development: why?</h2>
+<p>I don't run network services at work; I do performance work. So how do I use Docker?</p>
+<p>There are two things I do with Docker: I build PHP 5, and do performance regression testing on PHP 7. They're good case studies of how isolation and immutability provide real benefits in development and testing, and how the Docker tool chain makes life a lot nicer that previous solutions.</p>
+<h3>PHP 5 builds</h3>
+<p>I use the <em>isolation</em> that Docker provides to make building PHP 5 easier. PHP 5 depends on an old version of Bison, version 2. Ubuntu and Debian long since moved to version 3. There are a few ways I could have solved this:</p>
+<ul>
+<li>I could just install the old version directly on my system in <code>/usr/local/</code>, and hope everything still works and nothing else picks up Bison 2 when it needs Bison 3. Or I could install it somewhere else and remember to change my path correctly before I build PHP 5.</li>
+<li>I could roll a chroot by hand. Even with tools like debootstrap and schroot, working in chroots is a painful process.</li>
+<li>I could spin up a virtual machine on one of our development boxes and install the old version on that. That feels like overkill: why should I need to run an entire operating system? Why should I need to copy my source tree over the network to build it?</li>
+</ul>
+<p>Docker makes it easy to have a self-contained environment that has Bison 2 built from source, and to build my latest source tree in that environment. Why is Docker so much easier?</p>
+<p>Firstly, Docker allows me to base my container on an existing container, and there's an online library of containers to build from.<sup id="fnref-4"><a class="footnote-ref" href="#fn-4">4</a></sup> This means I don't have to roll a base image with <code>debootstrap</code> or the RHEL/CentOS/Fedora equivalent.</p>
+<p>Secondly, unlike a chroot build process, which ultimately is just copying files around, a docker build process includes the ability to both copy files from the host and <em>run commands</em> in the context of the image. This is defined in a file called a <code>Dockerfile</code>, and is kicked off by a single command: <code>docker build</code>.</p>
+<p>So, my PHP 5 build container loads an Ubuntu Vivid base container, uses apt-get to install the compiler, tool-chain and headers required to build PHP 5, then installs old bison from source, copies in the PHP source tree, and builds it. The vast majority of this process – the installation of the compiler, headers and bison, can be cached, so they don't have to be downloaded each time. And once the container finishes building, I have a fully built PHP interpreter ready for me to interact with.</p>
+<p>I do, at the moment, rebuild PHP 5 from scratch each time. This is a bit sub-optimal from a performance point of view. I could alleviate this with a Docker volume, which is a way of sharing data persistently between a host and a guest, but I haven't been sufficiently bothered by the speed yet. However, Docker volumes are also quite fiddly, leading to the development of tools like <code>docker compose</code> to deal with them. They also are prone to subtle and difficult to debug permission issues.</p>
+<h3>PHP 7 performance regression testing</h3>
+<p>The second thing I use docker for takes advantage of the throwaway nature of docker environments to prevent cross-contamination.</p>
+<p>PHP 7 is the next big version of PHP, slated to be released quite soon. I care about how that runs on POWER, and I preferably want to know if it suddenly deteriorates (or improves!). I use Docker to build a container with a daily build of PHP 7, and then I run a benchmark in it. This doesn't give me a particularly meaningful absolute number, but it allows me to track progress over time. Building it inside of Docker means that I can be sure that nothing from old runs persists into new runs, thus giving me more reliable data. However, because I do want the timing data I collect to persist, I send it out of the container over the network.</p>
+<p>I've now been collecting this data for almost 4 months, and it's plotted below, along with a 5-point moving average. The most notable feature of the graph is a the drop in benchmark time at about the middle. Sure enough, if you look at the PHP repository, you will see that a set of changes to improve PHP performance were merged on July 29: changes submitted by our very own Anton Blanchard.<sup id="fnref-5"><a class="footnote-ref" href="#fn-5">5</a></sup></p>
+<p><img alt="Graph of PHP 7 performance over time" src="/images/dja/php7-perf.png"></p>
+<h2>Docker pain points</h2>
+<p>Docker provides a vastly improved experience over previous solutions, but there are still a few pain points. For example:</p>
+<ol>
+<li>
+<p>Docker was apparently written by people who had no concept that platforms other than x86 exist. This leads to major issues for cross-architectural setups. For instance, Docker identifies images by a name and a revision. For example, <code>ubuntu</code> is the name of an image, and <code>15.04</code> is a revision. There's no ability to specify an architecture. So, how you do specify that you want, say, a 64-bit, little-endian PowerPC build of an image versus an x86 build? There have been a couple of approaches, both of which are pretty bad. You could name the image differently: say <code>ubuntu_ppc64le</code>. You can also just cheat and override the <code>ubuntu</code> name with an architecture specific version. Both of these break some assumptions in the Docker ecosystem and are a pain to work with.</p>
+</li>
+<li>
+<p>Image building is incredibly inflexible. If you have one system that requires a proxy, and one that does not, you need different Dockerfiles. As far as I can tell, there are no simple ways to hook in any changes between systems into a generic Dockerfile. This is largely by design, but it's still really annoying when you have one system behind a firewall and one system out on the public cloud (as I do in the PHP 7 setup).</p>
+</li>
+<li>
+<p>Visibility into a Docker server is poor. You end up with lots of different, anonymous images and dead containers, and you end up needing scripts to clean them up. It's not clear what Docker puts on your file system, or where, or how to interact with it.</p>
+</li>
+<li>
+<p>Docker is still using reasonably new technologies. This leads to occasional weird, obscure and difficult to debug issues.<sup id="fnref-6"><a class="footnote-ref" href="#fn-6">6</a></sup></p>
+</li>
+</ol>
+<h2>Final words</h2>
+<p>Docker provides me with a lot of useful tools in software development: both in terms of building and testing. Making use of it requires a certain amount of careful design thought, but when applied thoughtfully it can make life significantly easier.</p>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn-1">
+<p>There's some debate about how much stuff from the OS installation you should be using. You need to have key dynamic libraries available, but I would argue that you shouldn't be running long running processes other than your application. You shouldn't, for example, be running a SSH daemon in your container. (The one exception is that you must handle orphaned child processes appropriately: see <a href="https://blog.phusion.nl/2015/01/20/docker-and-the-pid-1-zombie-reaping-problem/">https://blog.phusion.nl/2015/01/20/docker-and-the-pid-1-zombie-reaping-problem/</a>) Considerations like debugging and monitoring the health of docker containers mean that this point of view is not universally shared.&#160;<a class="footnote-backref" href="#fnref-1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn-2">
+<p>Why not simply make them read only? You may be surprised at how many things break when running on a read-only file system. Things like logs and temporary files are common issues.&#160;<a class="footnote-backref" href="#fnref-2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn-3">
+<p>It is, however, easier to escape a Docker container than a VM. In Docker, an untrusted executable only needs a kernel exploit to get to root on the host, whereas in a VM you need a guest-to-host vulnerability, which are much rarer.&#160;<a class="footnote-backref" href="#fnref-3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn-4">
+<p>Anyone can upload an image, so this does require running untrusted code from the Internet. Sadly, this is a distinctly retrograde step when compared to the process of installing binary packages in distros, which are all signed by a distro's private key.&#160;<a class="footnote-backref" href="#fnref-4" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn-5">
+<p>See <a href="https://github.com/php/php-src/pull/1326">https://github.com/php/php-src/pull/1326</a>&#160;<a class="footnote-backref" href="#fnref-5" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn-6">
+<p>I hit this last week: <a href="https://github.com/docker/docker/issues/16256">https://github.com/docker/docker/issues/16256</a>, although maybe that's my fault for running systemd on my laptop.&#160;<a class="footnote-backref" href="#fnref-6" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>

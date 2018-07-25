@@ -1,260 +1,307 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Category: Petitboot &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles in the Petitboot category</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/08/17/getting-in-sync/" rel="bookmark" title="Permalink to Getting In Sync">Getting In Sync</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-08-17T15:23:00+10:00"> Wed 17 August 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/samuel-mendoza-jonas.html">Samuel Mendoza-Jonas</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>Since at least v1.0.0 Petitboot has used device-mapper snapshots to avoid
+mounting block devices directly. Primarily this is so Petitboot can mount disks
+and potentially perform filesystem recovery without worrying about messing it up
+and corrupting a host's boot partition - all changes happen to the snapshot in
+memory without affecting the actual device.</p>
+<p>This of course gets in the way if you actually <em>do</em> want to make changes to a
+block device. Petitboot will allow certain bootloader scripts to make changes
+to disks if configured (eg, grubenv updates), but if you manually make changes
+you would need to know the special sequence of <code>dmsetup</code> commands to merge the
+snapshots back to disk. This is particulary annoying if you're trying to copy
+logs to a USB device!</p>
+<p>Depending on how recent a version of Petitboot you're running, there are two
+ways of making sure your changes persist:</p>
+<h2>Before v1.2.2</h2>
+<p>If you really need to save changes from within Petitboot, the most
+straightforward way is to disable snapshots. Drop to the shell and enter</p>
+<div class="highlight"><pre><span></span>nvram --update-config petitboot,snapshots?=false
+reboot
+</pre></div>
+
+
+<p>Once you have rebooted you can remount the device as read-write and
+modify it as normal.</p>
+<h2>After v1.2.2</h2>
+<p>To make this easier while keeping the benefit of snapshots, v1.2.2 introduces
+a new user-event that will merge snapshots on demand. For example:</p>
+<div class="highlight"><pre><span></span>mount -o remount,rw /var/petitboot/mnt/dev/sda2
+cp /var/log/messages /var/petitboot/mnt/dev/sda2/
+pb-event sync@sda2
+</pre></div>
+
+
+<p>After calling <code>pb-event sync@yourdevice</code>, Petitboot will remount the device back to
+read-only and merge the current snapshot differences back to disk. You can also
+run <code>pb-event sync@all</code> to sync all existing snapshots if desired.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/07/05/optical-action-at-a-distance/" rel="bookmark" title="Permalink to Optical Action at a Distance">Optical Action at a Distance</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-07-05T15:23:00+10:00"> Tue 05 July 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/samuel-mendoza-jonas.html">Samuel Mendoza-Jonas</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>Generally when someone wants to install a Linux distro they start with an ISO
+file. Now we could burn that to a DVD, walk into the server room, and put it in
+our machine, but that's a pain. Instead let's look at how to do this over the
+network with Petitboot!</p>
+<p>At the moment Petitboot won't be able to handle an ISO file unless it's
+mounted in an expected place (eg. as a mounted DVD), so we need to unpack it
+somewhere. Choose somewhere to host the result and unpack the ISO via whatever
+method you prefer. (For example <code>bsdtar -xf /path/to/image.iso</code>).</p>
+<p>You'll get a bunch of files but for our purposes we only care about a few; the
+kernel, the initrd, and the bootloader configuration file. Using
+the Ubuntu 16.04 ppc64el ISO as an example, these are:</p>
+<div class="highlight"><pre><span></span>./install/vmlinux
+./install/initrd.gz.
+./boot/grub/grub.cfg
+</pre></div>
+
+
+<p>In grub.cfg we can see that the boot arguments are actually quite simple:</p>
+<div class="highlight"><pre><span></span>set timeout=-1
+
+menuentry &quot;Install&quot; {
+    linux   /install/vmlinux tasks=standard pkgsel/language-pack-patterns= pkgsel/install-language-support=false --- quiet
+    initrd  /install/initrd.gz
+}
+
+menuentry &quot;Rescue mode&quot; {
+    linux   /install/vmlinux rescue/enable=true --- quiet
+    initrd  /install/initrd.gz
+}
+</pre></div>
+
+
+<p>So all we need to do is create a PXE config file that points Petitboot towards
+the correct files.</p>
+<p>We're going to create a PXE config file which you could serve from your DHCP
+server, but that does not mean we need to use PXE - if you just want a quick
+install you only need make these files accessible to Petitboot, and then we can
+use the 'Retrieve config from URL' option to download the files.</p>
+<p>Create a petitboot.conf file somewhere accessible that contains (for Ubuntu):</p>
+<div class="highlight"><pre><span></span>label Install Ubuntu 16.04 Xenial Xerus
+    kernel http://myaccesibleserver/path/to/vmlinux
+    initrd http://myaccesibleserver/path/to/initrd.gz
+    append tasks=standard pkgsel/language-pack-patterns= pkgsel/install-language-support=false --- quiet
+</pre></div>
+
+
+<p>Then in Petitboot, select 'Retrieve config from URL' and enter
+<code>http://myaccesibleserver/path/to/petitboot.conf</code>. In the main menu your new
+option should appear - select it and away you go!</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/05/13/tell-me-about-petitboot/" rel="bookmark" title="Permalink to Tell Me About Petitboot">Tell Me About Petitboot</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-05-13T15:23:00+10:00"> Fri 13 May 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/samuel-mendoza-jonas.html">Samuel Mendoza-Jonas</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>A Google search for 'Petitboot' brings up results from a number of places, some describing its use on <a href="https://www.ibm.com/support/knowledgecenter/linuxonibm/liabp/liabppetitboot.htm">POWER servers</a>, others talking about how to use it on the <a href="http://jk.ozlabs.org/projects/petitboot/">PS3</a>, in varying levels of detail. I tend to get a lot of general questions about Petitboot and its behaviour, and have had a few requests for a broad "Welcome to Petitboot" blog, suggesting that existing docs deal with more specific topics.. or that people just aren't reading them :)</p>
+<p>So today we're going to take a bit of a crash course in the what, why, and possibly how of Petitboot. I won't delve too much into technical details, and this will be focussed on Petitboot in POWER land since that's where I spend most of my time.
+Here we go!</p>
+<h2>What</h2>
+<p>Aside from a whole lot of firmware and kernel logs flying past, the first thing you'll see when booting a POWER server<sup>In OPAL mode at least...</sup> is Petitboot's main menu:</p>
+<p><img alt="Main Menu" src="/images/sammj/mainmenu.png"></p>
+<p>Petitboot is the first interact-able component a user will see. The word 'BIOS' gets thrown around a lot when discussing this area, but that is wrong, and the people using that word are wrong.</p>
+<p>When the OPAL firmware layer <a href="https://github.com/open-power/skiboot">Skiboot</a> has finished its own set up, it loads a certain binary (stored on the BMC) into memory and jumps into it. This could hypothetically be anything, but for any POWER server right now it is 'Skiroot'. Skiroot is a full Linux kernel and userspace, which runs Petitboot. People often say Petitboot when they mean Skiroot - technically Petitboot is the server and UI processes that happen to run within Skiroot, and Skiroot is the full kernel and rootfs package. This is more obvious when you look at the <a href="https://github.com/open-power/op-build">op-build</a> project - Petitboot is a package built as part of the kernel and rootfs created by Buildroot.</p>
+<p>Petitboot is made of two major parts - the UI processes (one for each available console), and the 'discover' server. The discover server updates the UI processes, manages and scans available disks and network devices, and performs the actual booting of host operating systems. The UI, running in ncurses, displays these options, allows the user to edit boot options and system configuration, and tells the server which boot option to kexec.</p>
+<h2>Why</h2>
+<p>The 'why' delves into some of the major architectural differences between a POWER machine and your average x86 machine which, as always, could spread over several blog posts and/or a textbook.</p>
+<p>POWER processors don't boot themselves, instead the attached Baseboard Management Controller (BMC) does a lot of low-level poking that gets the primary processor into a state where it is ready to execute instructions. PowerVM systems would then jump directly into the PHYP hypervisor - any subsequent OS, be it AIX or Linux, would then run as a 'partition' under this hypervisor.</p>
+<p>What we all really want though is to run Linux directly on the hardware, which meant a new boot process would have to be thought up while still maintaining compatibility with PowerVM so systems could be booted in either mode. Thus became OPAL, and its implementation <a href="https://github.com/open-power/skiboot">Skiboot</a>. Skipping over <em>so much</em> detail, the system ends up booting into Skiboot which acts as our firmware layer. Skiboot isn't interactive and doesn't really care about things like disks, so it loads another binary into memory and executes it - Skiroot!</p>
+<p>Skiroot exists as an alternative to writing a whole new bootloader just for POWER in OPAL mode, or going through the effort to port an existing bootloader to understand the specifics of POWER. Why do all that when Linux already exists and already knows how to handle disks, network interfaces, and a thousand other things? Not to mention that when Linux gains support for fancy new devices so do we, and adding new features of our own is as simple as writing your average Linux program.</p>
+<p>Skiroot itself (not including Skiboot) is roughly comparable to UEFI, or at least much more so than legacy BIOS implementations. But whereas UEFI tends to be a monolithic blob of fairly platform-specific code (in practice), Skiroot is simply a small Linux environment that anyone could put together with Buildroot.</p>
+<p>A much better insight into the development and motivation behind Skiroot and Petitboot is available in Jeremy's <a href="https://www.youtube.com/watch?v=oxmMJMibZQ8">LCA2013 talk</a></p>
+<h2>Back to Petitboot</h2>
+<p>Petitboot is the part of the 'bootloader' that <em>did</em> need to be written, because users probably wouldn't be too thrilled if they had to manually mount disks and kexec their kernels every time they booted the machine. The Petitboot server process mounts any available disk devices and scans them for available operating systems. That's not to say that it scans the entire disk, because otherwise you could be waiting for quite some time, but rather it looks in a list of common locations for bootloader configuration files. This is handy because it means the operating system doesn't need to have any knowledge of Petitboot - it just uses its usual install scripts and Petitboot reads them to know what is available.
+At the same time Petitboot makes PXE requests on configured network interfaces so we can netboot, and allows these various sources to be given relative priorities for auto-boot, plus a number of other ways to specially configure booting behaviour.</p>
+<p>A particularly neat feature of existing in a Linux environment is the ability to easily recover from boot problems; whereas on another system you might need to use a Live CD to fix a misconfiguration or recover a broken filesystem, in Skiroot you can just drop to the shell and fix the issue right there.</p>
+<p>In summary, Petitboot/Skiroot is a small but capable Linux environment that every OPAL POWER machine boots into, gathering up all the various local and remote boot possibilities, and presenting them to you in a state-of-the-art ncurses interface. Petitboot updates all the time, and if you come across a feature that you think Petitboot is missing, patches are very welcome at <a href="mailto:petitboot@lists.ozlabs.org">petitboot@lists.ozlabs.org</a> (or hassle me on IRC)!</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/03/21/no-network-for-you/" rel="bookmark" title="Permalink to No Network For You">No Network For You</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-03-21T15:23:00+11:00"> Mon 21 March 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/samuel-mendoza-jonas.html">Samuel Mendoza-Jonas</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>In POWER land <a href="https://en.wikipedia.org/wiki/Intelligent_Platform_Management_Interface">IPMI</a> is mostly known as the method to access the machine's console and start interacting with Petitboot. However it also has a plethora of other features, handily described in the 600ish page <a href="http://www.intel.com/content/www/us/en/servers/ipmi/ipmi-second-gen-interface-spec-v2-rev1-1.html">IPMI specification</a> (which you can go read yourself).</p>
+<p>One especially relevant feature to Petitboot however is the 'chassis bootdev' command, which you can use to tell Petitboot to ignore any existing boot order, and only consider boot options of the type you specify (eg. 'network', 'disk', or 'setup' to not boot at all). Support for this has been in Petitboot for a while and should work on just about any machine you can get your hands on.</p>
+<h2>Network Overrides</h2>
+<p>Over in OpenPOWER<sup>1</sup> land however, someone took this idea and pushed it further - why not allow the network configuration to be overwritten too? This isn't in the IPMI spec, but if you cast your gaze down to page 398 where the spec lays out the entire format of the IPMI request, there is a certain field named "OEM Parameters". This is an optional amount of space set aside for whatever you like, which in this case is going to be data describing an override of the network config.</p>
+<p>This allows a user to tell Petitboot over IPMI to either;</p>
+<ul>
+<li>Disable the network completely,</li>
+<li>Set a particular interface to use DHCP, or</li>
+<li>Set a particular interface to use a specific static configuration.</li>
 </ul>
+<p>Any of these options will cause any existing network configurations to be ignored.</p>
+<h2>Building the Request</h2>
+<p>Since this is an OEM-specific command, your average ipmitool package isn't going to have a nice way of making this request, such as 'chassis bootdev network'. Rather you need to do something like this:</p>
+<div class="highlight"><pre><span></span>ipmitool -I lanplus -H $yourbmc -U $user -P $pass raw 0x00 0x08 0x61 0x80 0x21 0x70 0x62 0x21 0x00 0x01 0x06 0x04 0xf4 0x52 0x14 0xf3 0x01 0xdf 0x00 0x01 0x0a 0x3d 0xa1 0x42 0x10 0x0a 0x3d 0x2 0x1
+</pre></div>
 
 
-<ul class="main-navigation">
-      <li >
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li class="active">
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Category: Petitboot</h1>
-    	</header>
+<p>Horrific right? In the near future the Petitboot tree will include a helper program to format this request for you, but in the meantime (and for future reference), lets lay out how to put this together:</p>
+<div class="highlight"><pre><span></span>Specify the &quot;chassis bootdev&quot; command, field 96, data field 1:
+    0x00 0x08 0x61 0x80
 
-    	<div id="blog-archives">
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/08/17/getting-in-sync/">Getting In Sync</a></h1>
-                        <time datetime="2016-08-17 15:23:00+10:00" pubdate>
-                            <span class="month">Aug</span>
-                            <span class="day">17</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/07/05/optical-action-at-a-distance/">Optical Action at a Distance</a></h1>
-                        <time datetime="2016-07-05 15:23:00+10:00" pubdate>
-                            <span class="month">Jul</span>
-                            <span class="day">05</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/05/13/tell-me-about-petitboot/">Tell Me About Petitboot</a></h1>
-                        <time datetime="2016-05-13 15:23:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">13</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/03/21/no-network-for-you/">No Network For You</a></h1>
-                        <time datetime="2016-03-21 15:23:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">21</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2015</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/11/03/what-the-hile-is-this/">What the HILE is this?</a></h1>
-                        <time datetime="2015-11-03 15:02:00+11:00" pubdate>
-                            <span class="month">Nov</span>
-                            <span class="day">03</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/06/02/autoboot/">Petitboot Autoboot Changes</a></h1>
-                        <time datetime="2015-06-02 08:11:00+10:00" pubdate>
-                            <span class="month">Jun</span>
-                            <span class="day">02</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/petitboot.html'>Petitboot</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/08/17/getting-in-sync/">Getting In Sync</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/07/05/optical-action-at-a-distance/">Optical Action at a Distance</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/05/13/tell-me-about-petitboot/">Tell Me About Petitboot</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/03/21/no-network-for-you/">No Network For You</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2015/11/03/what-the-hile-is-this/">What the HILE is this?</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
+Unique value that Petitboot recognises:
+    0x21 0x70 0x62 0x21
 
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
+Version field (1)
+    0x00 0x01 ..   ..
+
+Size of the hardware address (6):
+    ..   ..   0x06 ..
+
+Size of the IP address (IPv4/IPv6):
+    ..   ..   ..   0x04
+
+Hardware (MAC) address:
+    0xf4 0x52 0x14 0xf3
+    0x01 0xdf ..   ..
+
+&#39;Ignore flag&#39; and DHCP/Static flag (DHCP is 0)
+    ..   ..   0x00 0x01
+
+(Below fields only required if setting a static IP)
+
+IP Address:
+    0x0a 0x3d 0xa1 0x42
+
+Subnet Mask (eg, /16):
+    0x10 ..   ..   ..
+Gateway IP Address:
+    ..   0x0a 0x3d 0x02
+    0x01
+</pre></div>
 
 
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
+<p>Clearing a network override is as simple as making a request empty aside from the header:</p>
+<div class="highlight"><pre><span></span>0x00 0x08 0x61 0x80 0x21 0x70 0x62 0x21 0x00 0x01 0x00 0x00
+</pre></div>
 
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2015&ndash;2016  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+
+<p>You can also read back the request over IPMI with this request:</p>
+<div class="highlight"><pre><span></span>0x00 0x09 0x61 0x00 0x00
+</pre></div>
+
+
+<p>That's it! Ideally this is something you would be scripting rather than bashing out on the keyboard - the main use case at the moment is as a way to force a machine to netboot against a known good source, rather than whatever may be available on its other interfaces.</p>
+<p>[1] The reason this is only available on OpenPOWER machines at the moment is that support for the IPMI command itself depends on the BMC firmware, and non-OpenPOWER machines use an FSP which is a different platform.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2015/11/03/what-the-hile-is-this/" rel="bookmark" title="Permalink to What the HILE is this?">What the HILE is this?</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2015-11-03T15:02:00+11:00"> Tue 03 November 2015 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/samuel-mendoza-jonas.html">Samuel Mendoza-Jonas</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>One of the cool features of POWER8 processors is the ability to run in either big- or little-endian mode. Several distros are already available in little-endian, but up until recently Petitboot has remained big-endian. While it has no effect on the OS, building Petitboot little-endian has its advantages, such as making support for vendor tools easier.
+So it should just be a matter of compiling Petitboot LE right? Well...</p>
+<h3>Switching Endianess</h3>
+<p>Endianess, and several other things besides, are controlled by the Machine State Register (MSR). Each processor in a machine has an MSR, and each bit of the MSR controls some aspect of the processor such as 64-bit mode or enabling interrupts. To switch endianess we set the LE bit (63) to 1.</p>
+<p>When a processor first starts up it defaults to big-endian (bit 63 = 0). However the processor doesn't actually know the endianess of the kernel code it is about to execute - either it is big-endian and everything is fine, or it isn't and the processor will very quickly try to execute an illegal instruction.</p>
+<p>The solution to this is an amazing little snippet of code in <a href="https://github.com/torvalds/linux/blob/master/arch/powerpc/boot/ppc_asm.h#L65">arch/powerpc/boot/ppc_asm.h</a> (follow the link to see some helpful commenting):</p>
+<div class="highlight"><pre><span></span><span class="cp">#define FIXUP_ENDIAN</span>
+    <span class="n">tdi</span>   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0x48</span><span class="p">;</span>
+    <span class="n">b</span>     <span class="err">$</span><span class="o">+</span><span class="mi">36</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0x05009f42</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0xa602487d</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0x1c004a39</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0xa600607d</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0x01006b69</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0xa6035a7d</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0xa6037b7d</span><span class="p">;</span>
+    <span class="p">.</span><span class="kt">long</span> <span class="mh">0x2400004c</span>
+</pre></div>
+
+
+<p>By some amazing coincidence if you take the opcode for <code>tdi 0, 0, 0x48</code> and flip the order of the bytes it forms the opcode for <code>b . + 8</code>. So if the kernel is big-endian, the processor will jump to the next instruction after this snippet. However if the kernel is little-endian we execute the next 8 instructions. These are written in reverse so that if the processor isn't in the right endian it interprets them backwards, executing the instructions shown in the linked comments above, resulting in MSR<sub>LE</sub> being set to 1.</p>
+<p>When booting a little-endian kernel all of the above works fine - but there is a problem for Petitboot that will become apparent a little further down...</p>
+<h3>Petitboot's Secret Sauce</h3>
+<p>The main feature of Petitboot is that it is a full (but small!) Linux kernel and userspace which scans all available devices and presents possible boot options. To boot an available operating system Petitboot needs to start executing the OS's kernel, which it accomplishes via <a href="https://en.wikipedia.org/wiki/Kexec">kexec</a>. Simply speaking kexec loads the target kernel into memory, shuts the current system down most of the way, and at the last moment sets the instruction pointer to the start of the target kernel. From there it's like booting any other kernel, including the FIXUP_ENDIAN section above.</p>
+<h3>We've Booted! Wait...</h3>
+<p>So our LE Petitboot kernel boots fine thanks to FIXUP_ENDIAN, we kexec into some other kernel.. and everything falls to pieces.<br>
+The problem is we've unwittingly changed one of the assumptions of booting a kernel; namely that MSR<sub>LE</sub> defaults to zero. When kexec-ing from an LE kernel we start executing the next kernel in LE mode. This itself is ok, the FIXUP_ENDIAN macro will handle the switch if needed. The problem is that the FIXUP_ENDIAN macro is relatively recent, first entering the kernel in early 2014. So if we're booting, say, an old Fedora 19 install with a v3.9 kernel - things go very bad, very quickly.</p>
+<h3>Fix #1</h3>
+<p>The solution seems pretty straightforward: find where we jump into the next kernel, and just before that make sure we reset the LE bit in the MSR. That's exactly what <a href="https://github.com/antonblanchard/kexec-lite/commit/150b14e76a4b51f865b929ad9a9bf4133e2d3af7">this patch</a> to kexec-lite does.<br>
+That worked up until I tested on a machine with more than one CPU. Remembering that the MSR is processor-specific, we also have to <a href="https://github.com/torvalds/linux/commit/ffebf5f391dfa9da3e086abad3eef7d3e5300249">reset the endianess of each secondary CPU</a><br>
+Now things are looking good! All the CPUs are reset to big-endian, the target kernel boots fine, and then... 'recursive interrupts?!'</p>
+<h3>HILE</h3>
+<p>Skipping the debugging process that led to this (hint: <a href="https://www.flamingspork.com/blog/2014/12/03/running-skiboot-opal-on-the-power8-simulator/">mambo</a> is actually a pretty cool tool), these were the sequence of steps leading up to the problem:</p>
+<ul>
+<li>Little-endian Petitboot kexecs into a big-endian kernel</li>
+<li>All CPUs are reset to big-endian</li>
+<li>The big-endian kernel begins to boot successfully</li>
+<li>Somewhere in the device-tree parsing code we take an exception</li>
+<li>Execution jumps to the exception handler at <a href="https://github.com/torvalds/linux/blob/master/arch/powerpc/kernel/exceptions-64s.S#L199">0x300</a></li>
+<li>I notice that MSR<sub>LE</sub> is set to 1</li>
+<li>WHAT WHY IS THE LE BIT IN THE MSR SET TO 1</li>
+<li>We fail to read the first instruction at 0x300 because it's written in big-endian, so we jump to the exception handler at 0x300... oh no.</li>
+</ul>
+<p>And then we very busily execute nothing until the machine is killed. I spend some time staring incredulously at my screen, then appeal to a <a href="https://github.com/torvalds/linux/blob/master/MAINTAINERS">higher authority</a> who replies with "What is the HILE set to?"  </p>
+<p>..the WHAT?<br>
+Cracking open the <a href="https://www.power.org/documentation/power-isa-v-2-07b/">PowerISA</a> reveals this tidbit:</p>
+<blockquote>
+<p>The Hypervisor Interrupt Little-Endian (HILE) bit is a bit
+in an implementation-dependent register or similar
+mechanism. The contents of the HILE bit are copied
+into MSR<sub>LE</sub> by interrupts that set MSR<sub>HV</sub> to 1 (see Section
+6.5), to establish the Endian mode for the interrupt
+handler. The HILE bit is set, by an implementation-dependent
+method, during system initialization,
+and cannot be modified after system initialization.</p>
+</blockquote>
+<p>To be fair, there are use cases for taking exceptions in a different endianess. The problem is that while HILE gets switched on when setting MSR<sub>LE</sub> to 1, it <em>doesn't</em> get turned off when MSR<sub>LE</sub> is set to zero. In particular the line "...cannot be modified after system initialization." led to a fair amount of hand wringing from myself and whoever would listen; if we can't reset the HILE bit, we simply can't use little-endian kernels for Petitboot.  </p>
+<p>Luckily while on some other systems the machinations of the firmware might be a complete black box, Petitboot runs on OPAL systems - which means the firmware source is <a href="https://github.com/open-power/skiboot">right here</a>. In particular we can see here the OPAL call to <a href="https://github.com/open-power/skiboot/blob/master/core/cpu.c#L702">opal_reinit_cpus</a> which among other things resets the HILE bit.<br>
+This is actually what turns on the HILE bit in the first place, and is meant to be called early on in boot since it also clobbers a large amount of state. Luckily for us we don't need to hold onto any state since we're about to jump into a new kernel. We just need to choose an appropriate place where we can be sure we won't take an exception before we get into the next kernel: thus the <a href="https://github.com/torvalds/linux/commit/e72bb8a5a884d022231149d407653923a1d79e53">final patch to support PowerNV machines.</a></p> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+<p class="paginator">
+    Page 1 / 2
+        <a href="https://sthbrx.github.io/category/petitboot2.html">&raquo;</a>
+</p>
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>

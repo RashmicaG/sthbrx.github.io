@@ -1,199 +1,269 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Author: Suraj Jitindar Singh &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed - Articles by Suraj Jitindar Singh</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
-</ul>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles by Suraj Jitindar Singh</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/01/30/extracting-early-boot-messages-in-qemu/" rel="bookmark" title="Permalink to Extracting Early Boot Messages in QEMU">Extracting Early Boot Messages in QEMU</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-01-30T16:47:00+11:00"> Mon 30 January 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/suraj-jitindar-singh.html">Suraj Jitindar Singh</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>Be me, you're a kernel hacker, you make some changes to your kernel, you boot
+test it in QEMU, and it fails to boot. Even worse is the fact that it just hangs
+without any failure message, no stack trace, no nothing. "Now what?" you think
+to yourself.</p>
+<p>You probably do the first thing you learnt in debugging101 and add abundant
+print statements all over the place to try and make some sense of what's
+happening and where it is that you're actually crashing. So you do this, you
+recompile your kernel, boot it in QEMU and lo and behold, nothing... What
+happened? You added all these shiny new print statements, where did the output
+go? The kernel still failed to boot (obviously), but where you were hoping to
+get some clue to go on you were again left with an empty screen. "Maybe I
+didn't print early enough" or "maybe I got the code paths wrong" you think,
+"maybe I just need more prints" even. So lets delve a bit deeper, why didn't
+you see those prints, where did they go, and how can you get at them?</p>
+<h1>__log_buf</h1>
+<p>So what happens when you call printk()? Well what normally happens is,
+depending on the log level you set, the output is sent to the console or logged
+so you can see it in dmesg. But what happens if we haven't registered a console
+yet? Well then we can't print the message can we, so its logged in a buffer,
+kernel log buffer to be exact helpfully named __log_buf.</p>
+<h1>Console Registration</h1>
+<p>So how come I eventually see print statements on my screen? Well at some point
+during the boot process a console is registered with the printk system, and any
+buffered output can now be displayed. On ppc it happens that this occurs in
+register_early_udbg_console() called in setup_arch() from start_kernel(),
+which is the generic kernel entry point. From this point forward when you print
+something it will be displayed on the console, but what if you crash before
+this? What are you supposed to do then?</p>
+<h1>Extracting Early Boot Messages in QEMU</h1>
+<p>And now the moment you've all been waiting for, how do I extract those early
+boot messages in QEMU if my kernel crashes before the console is registered?
+Well it's quite simple really, QEMU is nice enough to allow us to dump guest
+memory, and we know the log buffer is in there some where, so we just need to
+dump the correct part of memory which corresponds to the log buffer.</p>
+<h4>Locating __log_buf</h4>
+<p>Before we can dump the log buffer we need to know where it is. Luckily for us
+this is fairly simple, we just need to dump all the kernel symbols and look for
+the right one.</p>
+<div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">nm</span> <span class="n">vmlinux</span> <span class="o">&gt;</span> <span class="n">tmp</span><span class="p">;</span> <span class="n">grep</span> <span class="n">__log_buf</span> <span class="n">tmp</span><span class="p">;</span>
+<span class="n">c000000000f5e3dc</span> <span class="n">b</span> <span class="n">__log_buf</span>
+</pre></div>
 
 
-<ul class="main-navigation">
-      <li >
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Author: Suraj Jitindar Singh</h1>
-    	</header>
-
-    	<div id="blog-archives">
-            <h2>2017</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/01/30/extracting-early-boot-messages-in-qemu/">Extracting Early Boot Messages in QEMU</a></h1>
-                        <time datetime="2017-01-30 16:47:00+11:00" pubdate>
-                            <span class="month">Jan</span>
-                            <span class="day">30</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/virtualisation-and-emulation.html'>Virtualisation and Emulation</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/05/12/doubles-in-hex-and-why-kernel-addresses-2/">Doubles in hex and why Kernel addresses ~= -2</a></h1>
-                        <time datetime="2016-05-12 22:22:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">12</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/education.html'>Education</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/01/30/extracting-early-boot-messages-in-qemu/">Extracting Early Boot Messages in QEMU</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2016/05/12/doubles-in-hex-and-why-kernel-addresses-2/">Doubles in hex and why Kernel addresses ~= -2</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
-
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
+<p>We use the nm tool to list all the kernel symbols and output this into some
+temporary file, we can then grep this for the log buffer (which we know to be
+named __log_buf), and presto we are told that it's at kernel address 0xf5e3dc.</p>
+<h4>Dumping Guest Memory</h4>
+<p>It's then simply a case of dumping guest memory from the QEMU console. So first
+we press ^a+c to get us to the QEMU console, then we can use the aptly named
+dump-guest-memory.</p>
+<div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">help</span> <span class="n">dump</span><span class="o">-</span><span class="n">guest</span><span class="o">-</span><span class="n">memory</span>
+<span class="n">dump</span><span class="o">-</span><span class="n">guest</span><span class="o">-</span><span class="n">memory</span> <span class="p">[</span><span class="o">-</span><span class="n">p</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">z</span><span class="o">|-</span><span class="n">l</span><span class="o">|-</span><span class="n">s</span><span class="p">]</span> <span class="n">filename</span> <span class="p">[</span><span class="n">begin</span> <span class="n">length</span><span class="p">]</span> <span class="o">--</span> <span class="n">dump</span> <span class="n">guest</span> <span class="n">memory</span> <span class="n">into</span> <span class="n">file</span> <span class="err">&#39;</span><span class="n">filename</span><span class="err">&#39;</span><span class="p">.</span>
+            <span class="o">-</span><span class="nl">p</span><span class="p">:</span> <span class="k">do</span> <span class="n">paging</span> <span class="n">to</span> <span class="n">get</span> <span class="n">guest</span><span class="err">&#39;</span><span class="n">s</span> <span class="n">memory</span> <span class="n">mapping</span><span class="p">.</span>
+            <span class="o">-</span><span class="nl">d</span><span class="p">:</span> <span class="k">return</span> <span class="n">immediately</span> <span class="p">(</span><span class="k">do</span> <span class="n">not</span> <span class="n">wait</span> <span class="k">for</span> <span class="n">completion</span><span class="p">).</span>
+            <span class="o">-</span><span class="nl">z</span><span class="p">:</span> <span class="n">dump</span> <span class="n">in</span> <span class="n">kdump</span><span class="o">-</span><span class="n">compressed</span> <span class="n">format</span><span class="p">,</span> <span class="n">with</span> <span class="n">zlib</span> <span class="n">compression</span><span class="p">.</span>
+            <span class="o">-</span><span class="nl">l</span><span class="p">:</span> <span class="n">dump</span> <span class="n">in</span> <span class="n">kdump</span><span class="o">-</span><span class="n">compressed</span> <span class="n">format</span><span class="p">,</span> <span class="n">with</span> <span class="n">lzo</span> <span class="n">compression</span><span class="p">.</span>
+            <span class="o">-</span><span class="nl">s</span><span class="p">:</span> <span class="n">dump</span> <span class="n">in</span> <span class="n">kdump</span><span class="o">-</span><span class="n">compressed</span> <span class="n">format</span><span class="p">,</span> <span class="n">with</span> <span class="n">snappy</span> <span class="n">compression</span><span class="p">.</span>
+            <span class="nl">begin</span><span class="p">:</span> <span class="n">the</span> <span class="n">starting</span> <span class="n">physical</span> <span class="n">address</span><span class="p">.</span>
+            <span class="nl">length</span><span class="p">:</span> <span class="n">the</span> <span class="n">memory</span> <span class="n">size</span><span class="p">,</span> <span class="n">in</span> <span class="n">bytes</span><span class="p">.</span>
+</pre></div>
 
 
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
+<p>We just give it a filename for where we want our output to go, we know the
+starting address, we just don't know the length. We could choose some arbitrary
+length, but inspection of the kernel code shows us that:</p>
+<div class="highlight"><pre><span></span><span class="cp">#define __LOG_BUF_LEN (1 &lt;&lt; CONFIG_LOG_BUF_SHIFT)</span>
+<span class="k">static</span> <span class="kt">char</span> <span class="n">__log_buf</span><span class="p">[</span><span class="n">__LOG_BUF_LEN</span><span class="p">]</span> <span class="n">__aligned</span><span class="p">(</span><span class="n">LOG_ALIGN</span><span class="p">);</span>
+</pre></div>
 
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2016&ndash;2017  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+
+<p>Looking at the pseries_defconfig file shows us that the LOG_BUF_SHIFT is set to
+18, and thus we know that the buffer is 2^18 bytes or 256kb. So now we run:</p>
+<div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">dump</span><span class="o">-</span><span class="n">guest</span><span class="o">-</span><span class="n">memory</span> <span class="n">tmp</span> <span class="mh">0xf5e3dc</span> <span class="mi">262144</span>
+</pre></div>
+
+
+<p>And we now get our log buffer in the file tmp. This can simply be viewed with:</p>
+<div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">hexdump</span> <span class="o">-</span><span class="n">C</span> <span class="n">tmp</span>
+</pre></div>
+
+
+<p>This gives a readable, if poorly formatted output. I'm sure you can find
+something better but I'll leave that as an exercise for the reader.</p>
+<h1>Conclusion</h1>
+<p>So if like me your kernel hangs somewhere early in the boot process and you're
+left without your console output you are now fully equipped to extract the log
+buffer in QEMU and hopefully therein lies the answer to why you failed to boot.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2016/05/12/doubles-in-hex-and-why-kernel-addresses-2/" rel="bookmark" title="Permalink to Doubles in hex and why Kernel addresses ~= -2">Doubles in hex and why Kernel addresses ~= -2</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2016-05-12T22:22:00+10:00"> Thu 12 May 2016 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/suraj-jitindar-singh.html">Suraj Jitindar Singh</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>It started off a regular Wednesday morning when I hear from my desk a colleague
+muttering about doubles and their hex representation. "But that doesn't look
+right", "How do I read this as a float", and "<del>redacted</del> you're the engineer,
+you do it". My interest piqued, I headed over to his desk to enquire about the
+great un-solvable mystery of the double and its hex representation. The number
+which would consume me for the rest of the morning: 0xc00000001568fba0.</p>
+<h2>That's a Perfectly Valid hex Number!</h2>
+<p>I hear you say. And you're right, if we were to treat this as a long it
+would simply be 13835058055641365408 (or -4611686018068186208 if we assume
+a signed value). But we happen to know that this particular piece of data which
+we have printed is supposed to represent a double (-2 to be precise). "Well
+print it as a double" I hear from the back, and once again we <em>should</em> all know
+that this can be achieved rather easily by using the %f/%e/%g specifiers in our
+print statement. The only problem is that in kernel land (where we use printk)
+we are limited to printing fixed point numbers, hence why our only <em>easy</em>
+option was to print our double in it's raw hex format.</p>
+<p>This is the point where we all think back to that university course where
+number representations were covered in depth, and terms like 'mantissa' and
+'exponent' surface in our minds. Of course as we rack our brains we realise
+there's no way that we're going to remember exactly how a double is represented
+and bring up the <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">IEEE 754 Wikipedia page</a>.</p>
+<h2>What is a Double?</h2>
+<p>Taking a step back for a second, a double (or a double-precision floating-point)
+is a number format used to represent floating-point numbers (those with a
+decimal component). They are made up of a sign bit, an exponent and a fraction
+(or mantissa):</p>
+<p><img alt="Double Format" src="/images/surajjs/doubles_in_hex/double.png"></p>
+<p>Where the number they represent is defined by:</p>
+<p><img alt="Double Formula" src="/images/surajjs/doubles_in_hex/formula.png"></p>
+<p>So this means that a 1 in the MSB (sign bit) represents a negative number, and
+we have some decimal component (the fraction) which we multiply by some power
+of 2 (as determined by the exponent) to get our value.</p>
+<h2>Alright, so what's 0xc00000001568fba0?</h2>
+<p>The reason we're all here to be begin with, so what's 0xc00000001568fba0 if we
+treat it as a double? We can first split it into the three components:</p>
+<h5>0xc00000001568fba0:</h5>
+<p>Sign bit: 1             -&gt; Negative<br>
+Exponent: 0x400         -&gt; 2<sup>(1024 - 1023)</sup><br>
+Fraction: 0x1568fba0    -&gt; 1.<em>something</em><br></p>
+<p>And then use the formula above to get our number:</p>
+<p>(-1)<sup><strong>1</strong></sup> x 1.<em><strong>something</strong></em> x 2<sup><strong>(1024 - 1023)</strong></sup></p>
+<p><strong>But there's a much easier way!</strong> Just write ourselves a little program in
+userspace (where we are capable of printing floats) and we can save ourselves
+<em>most</em> of the trouble.</p>
+<div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+
+<span class="kt">void</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">long</span> <span class="n">val</span> <span class="o">=</span> <span class="mh">0xc00000001568fba0</span><span class="p">;</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;val: %lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">((</span><span class="kt">double</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">val</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>So all we're doing is taking our hex value and storing it in a long (val), then
+getting a pointer to val, casting it to a double pointer, and dereferencing it
+and printing it as a float. <em><strong>Drum Roll</strong></em> And the answer is?</p>
+<blockquote>
+<p>"val: -2.000000"</p>
+</blockquote>
+<p>"Wait a minute, that doesn't quite sound right". You're right, it does seem a
+bit strange that this is exactly -2. Well it may be that we are not printing
+enough decimal places to see the full result, so update our print statement to:</p>
+<div class="highlight"><pre><span></span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;val: %.64lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">((</span><span class="kt">double</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">val</span><span class="p">));</span>
+</pre></div>
+
+
+<p>And now we get:</p>
+<blockquote>
+<p>"val: -2.0000001595175973534423974342644214630126953125000000"</p>
+</blockquote>
+<p>Much better... But still where did this number come from and why wasn't it the
+-2 that we were expecting?</p>
+<h2>Kernel Pointers</h2>
+<p>At this point suspicions had been raised that what was being printed by my
+colleague was not what he expected and that this was in fact a Kernel pointer.
+How do you know? Lets take a step back for a second...</p>
+<p>In the PowerPC architecture, the address space which can be seen by an
+application is known as the <em>effective</em> address space. We can take this
+and translate it into a <em>virtual</em> address which when mapped through the
+HPT (hash page table) gives us a <em>real</em> address (or the hardware memory address).</p>
+<p>The <em>effective</em> address space is divided into 5 regions:</p>
+<p><img alt="Effective Address Table" src="/images/surajjs/doubles_in_hex/effective_address.png"></p>
+<p>As you may notice, Kernel addresses begin with 0xc. This has the advantage that
+we can map a <em>virtual</em> address without the need for a table by simply
+masking the top nibble.</p>
+<p>Thus it would be reasonable to assume that our value (0xc00000001568fba0) was
+indeed a pointer to a Kernel address (and further code investigation confirmed
+this).</p>
+<h2>But What is -2 as a Double in hex?</h2>
+<p>Well lets modify the above program and find out:</p>
+<div class="highlight"><pre><span></span><span class="n">include</span> <span class="o">&lt;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;</span>
+
+<span class="kt">void</span> <span class="n">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="kt">double</span> <span class="n">val</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">;</span>
+
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;val: 0x%lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">((</span><span class="kt">long</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">val</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Result?</p>
+<blockquote>
+<p>"val: 0xc000000000000000"</p>
+</blockquote>
+<p>Now that sounds much better. Lets take a closer look:</p>
+<h5>0xc000000000000000:</h5>
+<p>Sign Bit: 1     -&gt; Negative<br>
+Exponent: 0x400 -&gt; 2<sup>(1024 - 1023)</sup><br>
+Fraction: 0x0   -&gt; Zero<br></p>
+<p>So if you remember from above, we have:</p>
+<p>(-1)<sup><strong>1</strong></sup> x 1.<em><strong>0</strong></em> x 2<sup><strong>(1024 - 1023)</strong></sup> = -2</p>
+<p>What about -1? -3?</p>
+<h4>-1:</h4>
+<h5>0xbff0000000000000:</h5>
+<p>Sign Bit: 1     -&gt; Negative<br>
+Exponent: 0x3ff -&gt; 2<sup>(1023 - 1023)</sup><br>
+Fraction: 0x0   -&gt; Zero<br></p>
+<p>(-1)<sup><strong>1</strong></sup> x 1.<em><strong>0</strong></em> x 2<sup><strong>(1023 - 1023)</strong></sup> = -1</p>
+<h4>-3:</h4>
+<h5>0xc008000000000000:</h5>
+<p>Sign Bit: 1                     -&gt; Negative<br>
+Exponent: 0x400                 -&gt; 2<sup>(1024 - 1023)</sup><br>
+Fraction: 0x8000000000000       -&gt; 0.5<br></p>
+<p>(-1)<sup><strong>1</strong></sup> x 1.<em><strong>5</strong></em> x 2<sup><strong>(1024 - 1023)</strong></sup> = -3</p>
+<h2>So What Have We Learnt?</h2>
+<p><strong>Firstly</strong>, make sure that what you're printing is what you think you're printing.</p>
+<p><strong>Secondly</strong>, if it looks like a Kernel pointer then you're probably not printing
+what you think you're printing.</p>
+<p><strong>Thirdly</strong>, all Kernel pointers ~= -2 if you treat them as a double.</p>
+<p>And <strong>Finally</strong>, <em>with my morning gone</em>, I can say for certain that if we treat it as
+a double, 0xc00000001568fba0 =
+-2.0000001595175973534423974342644214630126953125.</p> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>

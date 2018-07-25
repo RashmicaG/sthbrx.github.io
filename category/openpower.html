@@ -1,326 +1,652 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Category: OpenPOWER &mdash; Store Half Byte-Reverse Indexed</title>
-  <meta name="author" content="OzLabs">
-
-  <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate"
-        title="Store Half Byte-Reverse Indexed RSS Feed" />
-
-
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-    <link href="https://sthbrx.github.io/favicon.png" rel="icon">
-
-  <link href="https://sthbrx.github.io/theme/css/main.css" media="screen, projection"
-        rel="stylesheet" type="text/css">
-
-  <link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-  <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic"
-        rel="stylesheet" type="text/css">
-
-  <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  var ts = document.createElement('span')
-  ts.className = 'toggle-sidebar'
-  ts = document.getElementById('content').appendChild(ts);
-  ts.addEventListener('click', function(e) {
-    e.preventDefault();
-    body = document.getElementsByTagName('body')[0];
-    bodyClasses = body.classList.toggle('collapse-sidebar');
-  });
-  var sections = document.querySelectorAll('aside.sidebar > section');
-  if (sections.length > 1) {
-    for (index = 0; index < sections.length; index++) {
-      section = sections[index];
-      if ((sections.length >= 3) && index % 3 === 0) {
-        section.classList.add("first");
-      }
-      var count = ((index +1) % 2) ? "odd" : "even";
-      section.classList.add(count);
-    }
-  }
-  if (sections.length >= 3) {
-    document.querySelector('aside.sidebar').classList.add('thirds');
-  }
-});
-  </script>
-    <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-91189608-1', 'auto');
-
-    ga('send', 'pageview');
-    </script>
+        <title>Store Half Byte-Reverse Indexed</title>
+        <meta charset="utf-8" />
+        <link href="https://sthbrx.github.io/atom.xml" type="application/atom+xml" rel="alternate" title="Store Half Byte-Reverse Indexed Full Atom Feed" />
+        <link href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate" title="Store Half Byte-Reverse Indexed RSS Feed" />
 </head>
 
-<body>
-  <header role="banner"><hgroup>
-  <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed</a></h1>
-    <h2>A Power Technical Blog</h2>
-</hgroup></header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="https://sthbrx.github.io/rss.xml" rel="subscribe-rss">RSS</a></li>
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://sthbrx.github.io/">Store Half Byte-Reverse Indexed <strong>A Power Technical Blog</strong></a></h1>
+        </header><!-- /#banner -->
+        <nav id="menu"><ul>
+        </ul></nav><!-- /#menu -->
+<section id="content">
+<h2>Articles in the OpenPOWER category</h2>
+
+<ol id="post-list">
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/" rel="bookmark" title="Permalink to memcmp() for POWER8 - part II">memcmp() for POWER8 - part II</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-09-01T12:00:00+10:00"> Fri 01 September 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>This entry is a followup to part I which you should absolutely read
+<a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">here</a> before continuing
+on.</p>
+<h2>Where we left off</h2>
+<p>We concluded that while a vectorised <code>memcmp()</code> is a win, there are
+some cases where it won't quite perform.</p>
+<h2>The overhead of enabling ALTIVEC</h2>
+<p>In the kernel we explicitly don't touch ALTIVEC unless we need to,
+this means that in the general case we can leave the userspace
+registers in place and not have do anything to service a syscall for a
+process.</p>
+<p>This means that if we do want to use ALTIVEC in the kernel, there is
+some setup that must be done. Notably, we must enable the facility (a
+potentially time consuming move to MSR), save off the registers (if
+userspace we using them) and an inevitable restore later on.</p>
+<p>If all this needs to be done for a <code>memcmp()</code> in the order of tens of
+bytes then it really wasn't worth it.</p>
+<p>There are two reasons that <code>memcmp()</code> might go for a small number of
+bytes, firstly and trivially detectable is simply that parameter n is
+small. The other is harder to detect, if the memcmp() is going to fail
+(return non zero) early then it also wasn't worth enabling ALTIVEC.</p>
+<h2>Detecting early failures</h2>
+<p>Right at the start of <code>memcmp()</code>, before enabling ALTIVEC, the first
+64 bytes are checked using general purpose registers. Why the first 64
+bytes, well why not? In a strange twist of fate 64 bytes happens to be
+the amount of bytes in four ALTIVEC registers (128 bits per register,
+so 16 bytes multiplied by 4) and by utter coincidence that happens to
+be the stride of the ALTIVEC compare loop.</p>
+<h2>What does this all look like</h2>
+<p>Well unlike part I the results appear slightly less consistent across
+three runs of measurement but there are some very key differences with
+part I. The trends do appear to be the same across all three runs,
+just less pronounced - why this is is unclear.</p>
+<p>The difference between run two and run three clipped at deltas of
+1000ns is interesting:
+<img alt="Sample 2: Deltas below 1000ns" src="/images/power8_memcmp/v2deltas2-1000.png" title="Sample 2: Deltas below 1000ns"></p>
+<p>vs</p>
+<p><img alt="Sample 3: Deltas below 1000ns" src="/images/power8_memcmp/v2deltas3-1000.png" title="Sample 3: Deltas below 1000ns"></p>
+<p>The results are similar except for a spike in the amount of deltas in
+the unpatched kernel at around 600ns. This is not present in the first
+sample (deltas1) of data. There are a number of reasons why this spike
+could have appeared here, it is possible that the kernel or hardware
+did something under the hood, prefetch could have brought deltas for a
+<code>memcmp()</code> that would otherwise have yielded a greater delta into the
+600ns range.</p>
+<p>What these two graphs do both demonstrate quite clearly is that
+optimisations down at the sub 100ns end have resulted in more sub
+100ns deltas for the patched kernel, a significant win over the
+original data. Zooming out and looking at a graph which includes
+deltas up to 5000ns shows that the sub 100ns delta optimisations
+haven't noticeably slowed the performance of long duration <code>memcmp()</code>,
+<img alt="Samply 2: Deltas below 5000ns" src="/images/power8_memcmp/v2deltas2-5000.png" title="Sample 2: Deltas below 5000ns">.</p>
+<h2>Conclusion</h2>
+<p>The small amount of extra development effort has yielded tangible
+results in reducing the low end <code>memcmp()</code> times. This second round of
+data collection and performance analysis only confirms the that for
+any significant amount of comparison, a vectorised loop is
+significantly quicker.</p>
+<p>The results obtained here show no downside to adopting this approach
+for all power8 and onwards chips as this new version of the patch
+solves the performance regression for small compares.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/" rel="bookmark" title="Permalink to memcmp() for POWER8">memcmp() for POWER8</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-08-07T12:00:00+10:00"> Mon 07 August 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/cyril-bur.html">Cyril Bur</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h2>Userspace</h2>
+<p>When writing C programs in userspace there is libc which does so much
+of the heavy lifting. One important thing libc provides is portability
+in performing syscalls, that is, you don't need to know the
+architectural details of performing a syscall on each architecture
+your program might be compiled for. Another important feature that
+libc provides for the average userspace programmer is highly optimised
+routines to do things that are usually performance critical. It would
+be extremely inefficient for each userspace programmer if they had to
+implement even the naive version of these functions let alone
+optimised versions. Let us take <code>memcmp()</code> for example, I could
+trivially implement this in C like:</p>
+<div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">memcmp</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">p1</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">p2</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">p2</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>However, while it is incredibly portable it is simply not going to
+perform, which is why the nice people who write libc have highly
+optimised ones in assembly for each architecture.</p>
+<h2>Kernel</h2>
+<p>When writing code for the Linux kernel, there isn't the luxury of a
+fully featured libc since it expects (and needs) to be in userspace,
+therefore we need to implement the features we need ourselves. Linux
+doesn't need all the features but something like <code>memcmp()</code> is
+definitely a requirement.</p>
+<p>There have been some recent optimisations in <a href="https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=sysdeps/powerpc/powerpc64/power8/memcmp.S;h=46b9c0067ad7cd74a36c4800ebfe03eb1be0311e;hb=dec4a7105edcdbabdcac5f358f5bc5dca4f4ed1b" title="power8 optimised memcmp">glibc</a> from which the
+kernel could benefit too! The question to be asked is, does the glibc
+optimised <code>power8_memcmp()</code> actually go faster or is it all smoke and
+mirrors?</p>
+<h2>Benchmarking <code>memcmp()</code></h2>
+<p>With things like <code>memcmp()</code> it is actually quite easy to choose
+datasets which can make any implementation look good. For example; the
+new <code>power8_memcmp()</code> makes use of the vector unit of the power8
+processor, in order to do so in the kernel there must be a small
+amount of setup code so that the rest of the kernel knows that the
+vector unit has been used and it correctly saves and restores the
+userspace vector registers. This means that <code>power8_memcmp()</code> has a
+slightly larger overhead than the current one, so for small compares
+or compares which are different early on then the newer 'faster'
+<code>power8_memcmp()</code> might actually not perform as well. For any kind of
+large compare however, using the vector unit should outperform a CPU
+register load and compare loop. It is for this reason that I wanted to
+avoid using micro benchmarks and use a 'real world' test as much as
+possible.</p>
+<p>The biggest user of <code>memcmp()</code> in the kernel, at least on POWER is Kernel
+Samepage Merging (KSM). KSM provides code to inspect all the pages of
+a running system to determine if they're identical and deduplicate
+them if possible. This kind of feature allows for memory overcommit
+when used in a KVM host environment as guest kernels are likely to
+have a lot of similar, readonly pages which can be merged with no
+overhead afterwards. In order to determine if the pages are the same
+KSM must do a lot of page sized <code>memcmp()</code>.</p>
+<h2>Performance</h2>
+<p>Performing a lot of page sized <code>memcmp()</code> is the one flaw with this
+test, the sizes of the <code>memcmp()</code> don't vary, hopefully the data will be
+'random' enough that we can still observe differences in the two
+approaches.</p>
+<p>My approach for testing involved getting the delta of <code>ktime_get()</code>
+across calls to <code>memcmp()</code> in <code>memcmp_pages()</code> (mm/ksm.c). This actually
+generated massive amounts of data, so, for consistency the following
+analysis is performed on the first 400MB of deltas collected.</p>
+<p>The host was compiled with <code>powernv_defconfig</code> and run out of a
+ramdisk. For consistency the host was rebooted between each run so as
+to not have any previous tests affect the next. The host was rebooted
+a total of six times, the first three with my 'patched'
+<code>power8_memcmp()</code> kernel was booted the second three times with just
+my data collection patch applied, the 'vanilla' kernel. Both
+kernels are based off <code>4.13-rc3</code>.</p>
+<p>Each boot the following script was run and the resulting deltas file
+saved somewhere before reboot. The command line argument was always
+15.</p>
+<div class="highlight"><pre><span></span><span class="ch">#!/bin/sh</span>
+
+ppc64_cpu --smt<span class="o">=</span>off
+
+<span class="c1">#Host actually boots with ksm off but be sure</span>
+<span class="nb">echo</span> <span class="m">0</span> &gt; /sys/kernel/mm/ksm/run
+
+<span class="c1">#Scan a lot of pages</span>
+<span class="nb">echo</span> <span class="m">999999</span> &gt; /sys/kernel/mm/ksm/pages_to_scan
+
+<span class="nb">echo</span> <span class="s2">&quot;Starting QEMUs&quot;</span>
+<span class="nv">i</span><span class="o">=</span><span class="m">0</span>
+<span class="k">while</span> <span class="o">[</span> <span class="s2">&quot;</span><span class="nv">$i</span><span class="s2">&quot;</span> -lt <span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span> <span class="o">]</span> <span class="p">;</span> <span class="k">do</span>
+    qemu-system-ppc64 -smp <span class="m">1</span> -m 1G -nographic -vga none <span class="se">\</span>
+        -machine pseries,accel<span class="o">=</span>kvm,kvm-type<span class="o">=</span>HV <span class="se">\</span>
+        -kernel guest.kernel  -initrd guest.initrd <span class="se">\</span>
+        -monitor pty -serial pty <span class="p">&amp;</span>
+    <span class="nv">i</span><span class="o">=</span><span class="k">$(</span>expr <span class="nv">$i</span> + <span class="m">1</span><span class="k">)</span><span class="p">;</span>
+<span class="k">done</span>
+
+<span class="nb">echo</span> <span class="s2">&quot;Letting all the VMs boot&quot;</span>
+sleep <span class="m">30</span>
+
+<span class="nb">echo</span> <span class="s2">&quot;Turning KSM om&quot;</span>
+<span class="nb">echo</span> <span class="m">1</span> &gt; /sys/kernel/mm/ksm/run
+
+<span class="nb">echo</span> <span class="s2">&quot;Letting KSM do its thing&quot;</span>
+sleep 2m
+
+<span class="nb">echo</span> <span class="m">0</span> &gt; /sys/kernel/mm/ksm/run
+
+dd <span class="k">if</span><span class="o">=</span>/sys/kernel/debug/ksm/memcmp_deltas <span class="nv">of</span><span class="o">=</span>deltas <span class="nv">bs</span><span class="o">=</span><span class="m">4096</span> <span class="nv">count</span><span class="o">=</span><span class="m">100</span>
+</pre></div>
+
+
+<p>The guest kernel was a <code>pseries_le_defconfig</code> <code>4.13-rc3</code> with the same
+ramdisk the host used. It booted to the login prompt and was left to
+idle.</p>
+<h2>Analysis</h2>
+<p>A variety of histograms were then generated in an attempt to see how
+the behaviour of <code>memcmp()</code> changed between the two implementations.
+It should be noted here that the y axis in the following graphs is a
+log scale as there were a lot of small deltas. The first observation
+is that the vanilla kernel had more smaller deltas, this is made
+particularly evident by the 'tally' points which are a running total
+of all deltas with less than the tally value.</p>
+<p><img alt="Sample 1 - Deltas below 200ns" src="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">
+Graph 1 depicting the vanilla kernel having a greater amount of small
+(sub 20ns) deltas than the patched kernel. The green points rise
+faster (left to right) and higher than the yellow points.</p>
+<p>Still looking at the tallies, <a href="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">graph 1</a> also shows that the tally
+of deltas is very close by the 100ns mark, which means that the
+overhead of <code>power8_memcmp()</code> is not too great.</p>
+<p>The problem with looking at only deltas under 200ns is that the
+performance results we want, that is, the difference between the
+algorithms is being masked by things like cache effects. To avoid this
+problem is may be wise to look at longer running (larger delta)
+<code>memcmp()</code> calls.</p>
+<p>The following graph plots all deltas below 5000ns - still relatively
+short calls to <code>memcmp()</code> but an interesting trend emerges:
+<img alt="Sample 1 - Deltas below 5000ns" src="/images/power8_memcmp/deltas1-5000.png" title="Sample 1: Deltas below 5000ns">
+Graph 2 shows that above 500ns the blue (patched kernel) points appear
+to have all shifted left with respect to the purple (vanilla kernel)
+points. This shows that for any <code>memcmp()</code> which will take more than
+500ns to get a result it is favourable to use <code>power8_memcmp()</code> and it
+is only detrimental to use  <code>power8_memcmp()</code> if the time will be
+under 50ns (a conservative estimate).</p>
+<p>It is worth noting that <a href="/images/power8_memcmp/deltas1-200.png" title="Sample 1: Deltas below 200ns">graph 1</a> and <a href="/images/power8_memcmp/deltas1-5000.png" title="Sample 1: Deltas below 5000ns">graph 2</a> are generated by
+combining the first run of data collected from the vanilla and patched
+kernels. All the deltas for both runs are can be viewed separately
+<a href="/images/power8_memcmp/vanilla_deltas1.png" title="All vanilla deltas">here for vanilla</a> and <a href="/images/power8_memcmp/patched_deltas1.png" title="All patched deltas">here for patched</a>. Finally, the results
+from the other four runs look very much identical and provide me with
+a fair amount of confidence that these results make sense.</p>
+<h2>Conclusions</h2>
+<p>It is important to separate possible KSM optimisations with generic
+<code>memcmp()</code> optimisations, for example, perhaps KSM shouldn't be
+calling <code>memcmp()</code> if it suspects the first byte will differ. On the
+other hand, things that <code>power8_memcmp()</code> could do (which it currently
+doesn't) is check the length parameter and perhaps avoid the overhead
+of enabling kernel vector if the compare is less than some small
+amount of bytes.</p>
+<p>It does seem like at least for the 'average case' glibcs
+<code>power8_memcmp()</code> is an improvement over what we have now.</p>
+<h2>Future work</h2>
+<p>A second round of data collection and plotting of delta vs position of
+first byte to differ should confirm these results, this would mean a
+more invasive patch to KSM.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/02/13/high-power-lustre/" rel="bookmark" title="Permalink to High Power Lustre">High Power Lustre</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-02-13T16:29:00+11:00"> Mon 13 February 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                        <a class="url fn" href="https://sthbrx.github.io/author/rashmica-gupta.html">Rashmica Gupta</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>(Most of the hard work here was done by fellow blogger Rashmica - I just verified her instructions and wrote up this post.)</p>
+<p><a href="http://lustre.org/">Lustre</a> is a high-performance clustered file system. Traditionally the Lustre client and server have run on x86, but both the server and client will also work on Power. Here's how to get them running.</p>
+<h1>Server</h1>
+<p>Lustre normally requires a patched 'enterprise' kernel - normally an old RHEL, CentOS or SUSE kernel. We tested with a CentOS 7.3 kernel. We tried to follow <a href="https://wiki.hpdd.intel.com/pages/viewpage.action?pageId=52104622">the Intel instructions</a> for building the kernel as much as possible - any deviations we had to make are listed below.</p>
+<h2>Setup quirks</h2>
+<p>We are told to edit <code>~/kernel/rpmbuild/SPEC/kernel.spec</code>. This doesn't exist because the directory is <code>SPECS</code> not <code>SPEC</code>: you need to edit <code>~/kernel/rpmbuild/SPECS/kernel.spec</code>.</p>
+<p>I also found there was an extra quote mark in the supplied patch script after <code>-lustre.patch</code>. I removed that and ran this instead:</p>
+<div class="highlight"><pre><span></span>for patch in $(<span class="err">&lt;</span>&quot;3.10-rhel7.series&quot;); do \
+      patch_file=&quot;<span class="nv">$HOME</span>/lustre-release/lustre/kernel_patches/patches/<span class="cp">${</span><span class="n">patch</span><span class="cp">}</span>&quot; \
+      cat &quot;<span class="cp">${</span><span class="n">patch_file</span><span class="cp">}</span>&quot; &gt;&gt; <span class="nv">$HOME</span>/lustre-kernel-x86_64-lustre.patch \
+done
+</pre></div>
+
+
+<p>The fact that there is 'x86_64' in the patch name doesn't matter as you're about to copy it under a different name to a place where it will be included by the spec file.</p>
+<h2>Building for ppc64le</h2>
+<p>Building for ppc64le was reasonably straight-forward. I had one small issue:</p>
+<div class="highlight"><pre><span></span>[build@dja-centos-guest rpmbuild]$ rpmbuild -bp --target=`uname -m` ./SPECS/kernel.spec
+Building target platforms: ppc64le
+Building for target ppc64le
+error: Failed build dependencies:
+       net-tools is needed by kernel-3.10.0-327.36.3.el7.ppc64le
+</pre></div>
+
+
+<p>Fixing this was as simple as a <code>yum install net-tools</code>.</p>
+<p>This was sufficient to build the kernel RPMs. I installed them and booted to my patched kernel - so far so good!</p>
+<h1>Building the client packages: CentOS</h1>
+<p>I then tried to build and install the RPMs from <a href="https://git.hpdd.intel.com/?p=fs/lustre-release.git;a=summary"><code>lustre-release</code></a>. This repository provides the sources required to build the client and utility binaries.</p>
+<p><code>./configure</code> and <code>make</code> succeeded, but when I went to install the packages with <code>rpm</code>, I found I was missing some dependencies:</p>
+<div class="highlight"><pre><span></span><span class="n">error</span><span class="o">:</span> <span class="n">Failed</span> <span class="n">dependencies</span><span class="o">:</span>
+        <span class="n">ldiskfsprogs</span> <span class="o">&gt;=</span> <span class="mf">1.42</span><span class="o">.</span><span class="mi">7</span><span class="o">.</span><span class="na">wc1</span> <span class="k">is</span> <span class="n">needed</span> <span class="n">by</span> <span class="n">kmod</span><span class="o">-</span><span class="n">lustre</span><span class="o">-</span><span class="n">osd</span><span class="o">-</span><span class="n">ldiskfs</span><span class="o">-</span><span class="mf">2.9</span><span class="o">.</span><span class="mi">52</span><span class="n">_60_g1d2fbad_dirty</span><span class="o">-</span><span class="mi">1</span><span class="o">.</span><span class="na">el7</span><span class="o">.</span><span class="na">centos</span><span class="o">.</span><span class="na">ppc64le</span>
+    <span class="n">sg3_utils</span> <span class="k">is</span> <span class="n">needed</span> <span class="n">by</span> <span class="n">lustre</span><span class="o">-</span><span class="n">iokit</span><span class="o">-</span><span class="mf">2.9</span><span class="o">.</span><span class="mi">52</span><span class="n">_60_g1d2fbad_dirty</span><span class="o">-</span><span class="mi">1</span><span class="o">.</span><span class="na">el7</span><span class="o">.</span><span class="na">centos</span><span class="o">.</span><span class="na">ppc64le</span>
+        <span class="n">attr</span> <span class="k">is</span> <span class="n">needed</span> <span class="n">by</span> <span class="n">lustre</span><span class="o">-</span><span class="n">tests</span><span class="o">-</span><span class="mf">2.9</span><span class="o">.</span><span class="mi">52</span><span class="n">_60_g1d2fbad_dirty</span><span class="o">-</span><span class="mi">1</span><span class="o">.</span><span class="na">el7</span><span class="o">.</span><span class="na">centos</span><span class="o">.</span><span class="na">ppc64le</span>
+        <span class="n">lsof</span> <span class="k">is</span> <span class="n">needed</span> <span class="n">by</span> <span class="n">lustre</span><span class="o">-</span><span class="n">tests</span><span class="o">-</span><span class="mf">2.9</span><span class="o">.</span><span class="mi">52</span><span class="n">_60_g1d2fbad_dirty</span><span class="o">-</span><span class="mi">1</span><span class="o">.</span><span class="na">el7</span><span class="o">.</span><span class="na">centos</span><span class="o">.</span><span class="na">ppc64le</span>
+</pre></div>
+
+
+<p>I was able to install <code>sg3_utils</code>, <code>attr</code> and <code>lsof</code>, but I was still missing <code>ldiskfsprogs</code>.</p>
+<p>It seems we need the lustre-patched version of <code>e2fsprogs</code> - I found a <a href="https://groups.google.com/forum/#!topic/lustre-discuss-list/U93Ja6Xkxfk">mailing list post</a> to that effect.</p>
+<p>So, following the instructions on the walkthrough, I grabbed <a href="https://downloads.hpdd.intel.com/public/e2fsprogs/latest/el7/SRPMS/">the SRPM</a> and installed the dependencies: <code>yum install -y texinfo libblkid-devel libuuid-devel</code></p>
+<p>I then tried <code>rpmbuild -ba SPECS/e2fsprogs-RHEL-7.spec</code>. This built but failed tests. Some failed because I ran out of disk space - they were using 10s of gigabytes. I found that there were some comments in the spec file about this with suggested tests to disable, so I did that. Even with that fix, I was still failing two tests:</p>
+<ul>
+<li><code>f_pgsize_gt_blksize</code>: Intel added this to their fork, and no equivalent exists in the master e2fsprogs branches. This relates to Intel specific assumptions about page sizes which don't hold on Power.</li>
+<li><code>f_eofblocks</code>: This may need fixing for large page sizes, see <a href="https://jira.hpdd.intel.com/browse/LU-4677?focusedCommentId=78814&amp;page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-78814">this bug</a>.</li>
 </ul>
+<p>I disabled the tests by adding the following two lines to the spec file, just before <code>make %{?_smp_mflags} check</code>.</p>
+<div class="highlight"><pre><span></span>rm -rf tests/f_pgsize_gt_blksize
+rm -rf tests/f_eofblocks
+</pre></div>
 
 
-<ul class="main-navigation">
-      <li >
-        <a href="https://sthbrx.github.io/category/development.html">Development</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/docker.html">Docker</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/education.html">Education</a>
-      </li>
-      <li class="active">
-        <a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a>
-      </li>
-      <li >
-        <a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a>
-      </li>
-</ul></nav>
-  <div id="main">
-    <div id="content">
-<div>
-	<article role="article">
-    	<header>
-    		<h1 class="entry-title">Category: OpenPOWER</h1>
-    	</header>
-
-    	<div id="blog-archives">
-            <h2>2017</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/">memcmp() for POWER8 - part II</a></h1>
-                        <time datetime="2017-09-01 12:00:00+10:00" pubdate>
-                            <span class="month">Sep</span>
-                            <span class="day">01</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">memcmp() for POWER8</a></h1>
-                        <time datetime="2017-08-07 12:00:00+10:00" pubdate>
-                            <span class="month">Aug</span>
-                            <span class="day">07</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/02/13/high-power-lustre/">High Power Lustre</a></h1>
-                        <time datetime="2017-02-13 16:29:00+11:00" pubdate>
-                            <span class="month">Feb</span>
-                            <span class="day">13</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/02/01/namd-on-nvlink/">NAMD on NVLink</a></h1>
-                        <time datetime="2017-02-01 08:32:00+11:00" pubdate>
-                            <span class="month">Feb</span>
-                            <span class="day">01</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2017/01/30/installing-centos-72-on-ibm-power-systems-s822lc-for-high-performance-computing-minksy-with-usb-device/">Installing Centos 7.2 on IBM Power System's S822LC for High Performance Computing (Minksy) with USB device</a></h1>
-                        <time datetime="2017-01-30 08:54:33+11:00" pubdate>
-                            <span class="month">Jan</span>
-                            <span class="day">30</span>
-                            <span class="year">2017</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2016</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/07/06/where-to-get-a-power8-development-vm/">Where to Get a POWER8 Development VM</a></h1>
-                        <time datetime="2016-07-06 16:00:00+10:00" pubdate>
-                            <span class="month">Jul</span>
-                            <span class="day">06</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/03/22/getting-logs-out-of-things/">Getting logs out of things</a></h1>
-                        <time datetime="2016-03-22 18:00:00+11:00" pubdate>
-                            <span class="month">Mar</span>
-                            <span class="day">22</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2016/02/15/panic/">Panic, flushing and compromise</a></h1>
-                        <time datetime="2016-02-15 14:22:00+11:00" pubdate>
-                            <span class="month">Feb</span>
-                            <span class="day">15</span>
-                            <span class="year">2016</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-            <h2>2015</h2>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/06/03/ppc64le-hello-on-real-hardware/">Running ppc64le_hello on real hardware</a></h1>
-                        <time datetime="2015-06-03 12:16:00+10:00" pubdate>
-                            <span class="month">Jun</span>
-                            <span class="day">03</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/05/27/joining-the-capi-project/">Joining the CAPI project</a></h1>
-                        <time datetime="2015-05-27 15:08:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">27</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-                    <article>
-                        <h1><a href="https://sthbrx.github.io/blog/2015/05/21/openpower-powers-forward/">OpenPOWER Powers Forward</a></h1>
-                        <time datetime="2015-05-21 11:29:00+10:00" pubdate>
-                            <span class="month">May</span>
-                            <span class="day">21</span>
-                            <span class="year">2015</span>
-                        </time>
-                        <footer>
-                            <span class="categories">posted in
-                                <a class='category' href='https://sthbrx.github.io/category/openpower.html'>OpenPOWER</a>
-                            </span>
-                        </footer>
-                    </article>
-	    </div>
-    </article>
-</div>
-<aside class="sidebar">
-  <section>
-    <h1>Recent Posts</h1>
-    <ul id="recent_posts">
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/09/01/memcmp-for-power8-part-ii/">memcmp() for POWER8 - part II</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/08/07/memcmp-for-power8/">memcmp() for POWER8</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/02/13/high-power-lustre/">High Power Lustre</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/02/01/namd-on-nvlink/">NAMD on NVLink</a>
-      </li>
-      <li class="post">
-          <a href="https://sthbrx.github.io/blog/2017/01/30/installing-centos-72-on-ibm-power-systems-s822lc-for-high-performance-computing-minksy-with-usb-device/">Installing Centos 7.2 on IBM Power System's S822LC for High Performance Computing (Minksy) with USB device</a>
-      </li>
-    </ul>
-  </section>
-  <section>
-      
-    <h1>Categories</h1>
-    <ul id="recent_posts">
-        <li><a href="https://sthbrx.github.io/category/development.html">Development</a></li>
-        <li><a href="https://sthbrx.github.io/category/docker.html">Docker</a></li>
-        <li><a href="https://sthbrx.github.io/category/education.html">Education</a></li>
-        <li><a href="https://sthbrx.github.io/category/openpower.html">OpenPOWER</a></li>
-        <li><a href="https://sthbrx.github.io/category/petitboot.html">Petitboot</a></li>
-        <li><a href="https://sthbrx.github.io/category/snowpatch.html">snowpatch</a></li>
-        <li><a href="https://sthbrx.github.io/category/virtualisation-and-emulation.html">Virtualisation and Emulation</a></li>
-    </ul>
-  </section>
- 
-
-  <section>
-  <h1>Tags</h1>
-    <a href="https://sthbrx.github.io/tag/remoteposts.html">remoteposts</a>,    <a href="https://sthbrx.github.io/tag/kernel.html">kernel</a>,    <a href="https://sthbrx.github.io/tag/petitboot.html">petitboot</a>,    <a href="https://sthbrx.github.io/tag/conferences.html">conferences</a>,    <a href="https://sthbrx.github.io/tag/debugging.html">debugging</a>,    <a href="https://sthbrx.github.io/tag/skiroot.html">skiroot</a>,    <a href="https://sthbrx.github.io/tag/lustre.html">lustre</a>,    <a href="https://sthbrx.github.io/tag/nvlink.html">nvlink</a>,    <a href="https://sthbrx.github.io/tag/work-experience.html">work experience</a>,    <a href="https://sthbrx.github.io/tag/ceph.html">ceph</a>,    <a href="https://sthbrx.github.io/tag/intern.html">intern</a>,    <a href="https://sthbrx.github.io/tag/linux.html">linux</a>,    <a href="https://sthbrx.github.io/tag/skiboot.html">skiboot</a>,    <a href="https://sthbrx.github.io/tag/opal.html">OPAL</a>,    <a href="https://sthbrx.github.io/tag/printk.html">printk</a>,    <a href="https://sthbrx.github.io/tag/education.html">Education</a>,    <a href="https://sthbrx.github.io/tag/qemu.html">QEMU</a>,    <a href="https://sthbrx.github.io/tag/openbmc.html">openbmc</a>,    <a href="https://sthbrx.github.io/tag/pxe.html">pxe</a>,    <a href="https://sthbrx.github.io/tag/linux-gods.html">Linux Gods</a>,    <a href="https://sthbrx.github.io/tag/virtualisation.html">virtualisation</a>,    <a href="https://sthbrx.github.io/tag/aufs.html">aufs</a>,    <a href="https://sthbrx.github.io/tag/networking.html">networking</a>,    <a href="https://sthbrx.github.io/tag/network.html">network</a>,    <a href="https://sthbrx.github.io/tag/hex.html">hex</a>,    <a href="https://sthbrx.github.io/tag/tools.html">tools</a>,    <a href="https://sthbrx.github.io/tag/boot.html">boot</a>,    <a href="https://sthbrx.github.io/tag/storage.html">storage</a>,    <a href="https://sthbrx.github.io/tag/minsky.html">minsky</a>,    <a href="https://sthbrx.github.io/tag/centos7.html">centos7</a>,    <a href="https://sthbrx.github.io/tag/vdso.html">vdso</a>,    <a href="https://sthbrx.github.io/tag/mitigation.html">mitigation</a>,    <a href="https://sthbrx.github.io/tag/offtopic.html">offtopic</a>,    <a href="https://sthbrx.github.io/tag/rhel.html">RHEL</a>,    <a href="https://sthbrx.github.io/tag/hpc.html">hpc</a>,    <a href="https://sthbrx.github.io/tag/performance.html">performance</a>,    <a href="https://sthbrx.github.io/tag/srop.html">SROP</a>,    <a href="https://sthbrx.github.io/tag/sparseposting.html">sparseposting</a>,    <a href="https://sthbrx.github.io/tag/development.html">Development</a>,    <a href="https://sthbrx.github.io/tag/bmc.html">bmc</a>,    <a href="https://sthbrx.github.io/tag/erasure.html">erasure</a>,    <a href="https://sthbrx.github.io/tag/float.html">float</a>,    <a href="https://sthbrx.github.io/tag/raid.html">raid</a>,    <a href="https://sthbrx.github.io/tag/power.html">power</a>,    <a href="https://sthbrx.github.io/tag/ipmi.html">ipmi</a>,    <a href="https://sthbrx.github.io/tag/gpu.html">gpu</a>,    <a href="https://sthbrx.github.io/tag/p8.html">p8</a>,    <a href="https://sthbrx.github.io/tag/early.html">early</a>,    <a href="https://sthbrx.github.io/tag/lvm.html">lvm</a>,    <a href="https://sthbrx.github.io/tag/numa.html">numa</a>,    <a href="https://sthbrx.github.io/tag/autoboot.html">autoboot</a>,    <a href="https://sthbrx.github.io/tag/xdp.html">xdp</a>,    <a href="https://sthbrx.github.io/tag/realcontent.html">realcontent</a>,    <a href="https://sthbrx.github.io/tag/cgroups.html">cgroups</a>,    <a href="https://sthbrx.github.io/tag/based16.html">based16</a>,    <a href="https://sthbrx.github.io/tag/php.html">php</a>,    <a href="https://sthbrx.github.io/tag/snowpatch.html">snowpatch</a>,    <a href="https://sthbrx.github.io/tag/asm.html">asm</a>,    <a href="https://sthbrx.github.io/tag/patches.html">patches</a>,    <a href="https://sthbrx.github.io/tag/dmesg.html">dmesg</a>,    <a href="https://sthbrx.github.io/tag/namd.html">namd</a>,    <a href="https://sthbrx.github.io/tag/ozlabs.html">Ozlabs</a>,    <a href="https://sthbrx.github.io/tag/netboot.html">netboot</a>,    <a href="https://sthbrx.github.io/tag/s822lc-for-hpc.html">S822LC for hpc</a>,    <a href="https://sthbrx.github.io/tag/overlay.html">overlay</a>,    <a href="https://sthbrx.github.io/tag/kexec.html">kexec</a>,    <a href="https://sthbrx.github.io/tag/centos.html">centos</a>,    <a href="https://sthbrx.github.io/tag/double.html">double</a>,    <a href="https://sthbrx.github.io/tag/fsp.html">FSP</a>,    <a href="https://sthbrx.github.io/tag/openpower.html">openpower</a>,    <a href="https://sthbrx.github.io/tag/cuda.html">cuda</a>,    <a href="https://sthbrx.github.io/tag/error.html">error</a>,    <a href="https://sthbrx.github.io/tag/debug.html">debug</a>,    <a href="https://sthbrx.github.io/tag/devmapper.html">devmapper</a>,    <a href="https://sthbrx.github.io/tag/goodposts.html">goodposts</a>,    <a href="https://sthbrx.github.io/tag/stupid-ideas.html">stupid ideas</a>,    <a href="https://sthbrx.github.io/tag/capi.html">capi</a>  </section>
+<p>With those tests disabled I was able to build the packages successfully. I installed them with <code>yum localinstall *1.42.13.wc5*</code> (I needed that rather weird pattern to pick up important RPMs that didn't fit the <code>e2fs*</code> pattern - things like <code>libcom_err</code> and <code>libss</code>)</p>
+<p>Following that I went back to the <code>lustre-release</code> build products and was able to successfully run <code>yum localinstall *ppc64le.rpm</code>!</p>
+<h1>Testing the server</h1>
+<p>After disabling SELinux and rebooting, I ran the test script:</p>
+<div class="highlight"><pre><span></span>sudo /usr/lib64/lustre/tests/llmount.sh
+</pre></div>
 
 
-    <section>
-        <h1>Social</h1>
-        <ul>
-            <li><a href="https://sthbrx.github.io/rss.xml" type="application/rss+xml" rel="alternate">RSS</a></li>
-            <li><a href="https://github.com/sthbrx/" target="_blank">GitHub</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/linuxppc-dev" target="_blank">linuxppc mailing list</a></li>
-            <li><a href="https://lists.ozlabs.org/listinfo/skiboot" target="_blank">Skiboot mailing list</a></li>
-        </ul>
-    </section>
-    <section>
-        <h1>Blogroll</h1>
-        <ul>
-            <li><a href="http://ozlabs.org" target="_blank">OzLabs</a></li>
-        </ul>
-    </section>
+<p>This spat out one scary warning:</p>
+<div class="highlight"><pre><span></span>mount.lustre FATAL: unhandled/unloaded fs type 0 &#39;ext3&#39;
+</pre></div>
 
-    <section>
-        <h1>Disclaimer</h1>
-        <div>
-This blog represents the views of the individual authors, and doesn't necessarily represent IBM's positions, strategies or opinions.        </div>
-    </section>
-</aside>    </div>
-  </div>
-  <footer role="contentinfo"><p>
-    Copyright &copy;  2015&ndash;2017  OzLabs &mdash;
-  <span class="credit">Powered by <a href="http://getpelican.com">Pelican</a></span>
-</p></footer>
+
+<p>The test did seem to succeed overall, and it would seem that is a <a href="https://jira.hpdd.intel.com/browse/LU-9059">known problem</a>, so I pressed on undeterred.</p>
+<p>I then attached a couple of virtual harddrives for the metadata and object store volumes, and having set them up, proceeded to try to mount my freshly minted lustre volume from some clients.</p>
+<h1>Testing with a ppc64le client</h1>
+<p>My first step was to test whether another ppc64le machine would work as a client.</p>
+<p>I tried with an existing Ubuntu 16.04 VM that I use for much of my day to day development.</p>
+<p>A quick google suggested that I could grab the <code>lustre-release</code> repository and run <code>make debs</code> to get Debian packages for my system.</p>
+<p>I needed the following dependencies:</p>
+<div class="highlight"><pre><span></span>sudo apt install module-assistant debhelper dpatch libsnmp-dev quilt
+</pre></div>
+
+
+<p>With those the packages built successfully, and could be easily installed:</p>
+<div class="highlight"><pre><span></span>dpkg -i lustre-client-modules-4.4.0-57-generic_2.9.52-60-g1d2fbad-dirty-1_ppc64el.deblustre-utils_2.9.52-60-g1d2fbad-dirty-1_ppc64el.deb
+</pre></div>
+
+
+<p>I tried to connect to the server:</p>
+<div class="highlight"><pre><span></span>sudo mount -t lustre $SERVER_IP@tcp:/lustre /lustre/
+</pre></div>
+
+
+<p>Initially I wasn't able to connect to the server at all. I remembered that (unlike Ubuntu), CentOS comes with quite an aggressive firewall by default. I ran the following on the server:</p>
+<div class="highlight"><pre><span></span>systemctl stop firewalld
+</pre></div>
+
+
+<p>And voila! I was able to connect, mount the lustre volume, and successfully read and write to it. This is very much an over-the-top hack - I should have poked holes in the firewall to allow just the ports lustre needed. This is left as an exercise for the reader.</p>
+<h1>Testing with an x86_64 client</h1>
+<p>I then tried to run <code>make debs</code> on my Ubuntu 16.10 x86_64 laptop.</p>
+<p>This did not go well - I got the following error:</p>
+<div class="highlight"><pre><span></span>liblustreapi.c: In function ‘llapi_get_poollist’:
+liblustreapi.c:1201:3: error: ‘readdir_r’ is deprecated [-Werror=deprecated-declarations]
+</pre></div>
+
+
+<p>This looks like one of the new errors introduced in recent GCC versions, and is <a href="https://jira.hpdd.intel.com/browse/LU-8724?focusedCommentId=175244&amp;page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-175244">a known bug</a>. To work around it, I found the following stanza in a <code>lustre/autoconf/lustre-core.m4</code>, and removed the <code>-Werror</code>:</p>
+<div class="highlight"><pre><span></span>AS_IF([test $target_cpu == &quot;i686&quot; -o $target_cpu == &quot;x86_64&quot;],
+        [CFLAGS=&quot;$CFLAGS -Wall -Werror&quot;])
+</pre></div>
+
+
+<p>Even this wasn't enough: I got the following errors:</p>
+<div class="highlight"><pre><span></span>/home/dja/dev/lustre-release/debian/tmp/modules-deb/usr_src/modules/lustre/lustre/llite/dcache.c:387:22: error: initialization from incompatible pointer type [-Werror=incompatible-pointer-types]
+         .d_compare = ll_dcompare,
+                  ^~~~~~~~~~~
+/home/dja/dev/lustre-release/debian/tmp/modules-deb/usr_src/modules/lustre/lustre/llite/dcache.c:387:22: note: (near initialization for ‘ll_d_ops.d_compare’)
+</pre></div>
+
+
+<p>I figured this was probably because Ubuntu 16.10 has a 4.8 kernel, and Ubuntu 16.04 has a 4.4 kernel. Work on supporting 4.8 <a href="https://jira.hpdd.intel.com/browse/LU-9003">is ongoing</a>.</p>
+<p>Sure enough, when I fired up a 16.04 x86_64 VM with a 4.4 kernel, I was able to build and install fine.</p>
+<p>Connecting didn't work first time - the guest failed to mount, but I did get the following helpful error on the server:</p>
+<div class="highlight"><pre><span></span><span class="n">LNetError</span><span class="o">:</span> <span class="mi">2595</span><span class="o">:</span><span class="mi">0</span><span class="o">:(</span><span class="n">acceptor</span><span class="o">.</span><span class="na">c</span><span class="o">:</span><span class="mi">406</span><span class="o">:</span><span class="n">lnet_acceptor</span><span class="o">())</span> <span class="n">Refusing</span> <span class="n">connection</span> <span class="n">from</span> <span class="mf">10.61</span><span class="o">.</span><span class="mf">2.227</span><span class="o">:</span> <span class="n">insecure</span> <span class="n">port</span> <span class="mi">1024</span>
+</pre></div>
+
+
+<p>Refusing insecure port 1024 made me thing that perhaps the NATing that qemu was performing for me was interfering - perhaps the server expected to get a connection where the source port was privileged, and qemu wouldn't be able to do that with NAT.</p>
+<p>Sure enough, switching NAT to bridging was enough to get the x86 VM to talk to the ppc64le server. I verified that <code>ls</code>, reading and writing all succeeded.</p>
+<h1>Next steps</h1>
+<p>The obvious next steps are following up the disabled tests in e2fsprogs, and doing a lot of internal performance and functionality testing.</p>
+<p>Happily, it looks like Lustre might be in the mainline kernel before too long - parts have already started to go in to staging. This will make our lives a lot easier: for example, the breakage between 4.4 and 4.8 would probably have already been picked up and fixed if it was the main kernel tree rather than an out-of-tree patch set.</p>
+<p>In the long run, we'd like to make Lustre on Power just as easy as Lustre on x86. (And, of course, more performant!) We'll keep you up to date!</p>
+<p>(Thanks to fellow bloggers Daniel Black and Andrew Donnellan for useful feedback on this post.)</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/02/01/namd-on-nvlink/" rel="bookmark" title="Permalink to NAMD on NVLink">NAMD on NVLink</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-02-01T08:32:00+11:00"> Wed 01 February 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-axtens.html">Daniel Axtens</a>
+                        <a class="url fn" href="https://sthbrx.github.io/author/rashmica-gupta.html">Rashmica Gupta</a>
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-black.html">Daniel Black</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <p>NAMD is a molecular dynamics program that can use GPU acceleration to speed up its calculations. Recent OpenPOWER machines like the IBM Power Systems S822LC for High Performance Computing (Minsky) come with a new interconnect for GPUs called NVLink, which offers extremely high bandwidth to a number of very powerful Nvidia Pascal P100 GPUs. So they're ideal machines for this sort of workload.</p>
+<p>Here's how to set up NAMD 2.12 on your Minsky, and how to debug some common issues. We've targeted this script for CentOS, but we've successfully compiled NAMD on Ubuntu as well.</p>
+<h2>Prerequisites</h2>
+<h3>GPU Drivers and CUDA</h3>
+<p>Firstly, you'll need CUDA and the NVidia drivers.</p>
+<p>You can install CUDA by following the instructions on NVidia's <a href="https://developer.nvidia.com/cuda-downloads">CUDA Downloads</a> page.</p>
+<div class="highlight"><pre><span></span>yum install epel-release
+yum install dkms
+# download the rpm from the NVidia website
+rpm -i cuda-repo-rhel7-8-0-local-ga2-8.0.54-1.ppc64le.rpm
+yum clean expire-cache
+yum install cuda
+# this will take a while...
+</pre></div>
+
+
+<p>Then, we set up a profile file to automatically load CUDA into our path:</p>
+<div class="highlight"><pre><span></span>cat &gt;  /etc/profile.d/cuda_path.sh <span class="err">&lt;</span><span class="nt">&lt;EOF</span>
+<span class="err">#</span> <span class="err">From</span> <span class="err">http://developer.download.nvidia.com/compute/cuda/8.0/secure/prod/docs/sidebar/CUDA_Quick_Start_Guide.pdf</span> <span class="err">-</span> <span class="err">4.4.2.1</span>
+<span class="err">export</span> <span class="na">PATH=</span><span class="s">/usr/local/cuda-8.0/bin${PATH:+:${PATH}}</span>
+<span class="err">export</span> <span class="na">LD_LIBRARY_PATH=</span><span class="s">/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}</span>
+<span class="err">EOF</span>
+</pre></div>
+
+
+<p>Now, open a new terminal session and check to see if it works:</p>
+<div class="highlight"><pre><span></span>cuda-install-samples-8.0.sh ~
+cd ~/NVIDIA_CUDA-8.0_Samples/1_Utilities/bandwidthTest
+make &amp;&amp; ./bandwidthTest
+</pre></div>
+
+
+<p>If you see a figure of ~32GB/s, that means NVLink is working as expected. A figure of ~7-8GB indicates that only PCI is working, and more debugging is required.</p>
+<h3>Compilers</h3>
+<p>You need a c++ compiler:</p>
+<div class="highlight"><pre><span></span>yum install gcc-c++
+</pre></div>
+
+
+<h2>Building NAMD</h2>
+<p>Once CUDA and the compilers are installed, building NAMD is reasonably straightforward. The one hitch is that because we're using CUDA 8.0, and the NAMD build scripts assume CUDA 7.5, we need to supply an updated <a href="/images/namd/Linux-POWER.cuda">Linux-POWER.cuda file</a>. (We also enable code generation for the Pascal in this file.)</p>
+<p>We've documented the entire process as a script which you can <a href="/images/namd/install-namd.sh">download</a>. We'd recommend executing the commands one by one, but if you're brave you can run the script directly.</p>
+<p>The script will fetch NAMD 2.12 and build it for you, but won't install it. It will look for the CUDA override file in the directory you are running the script from, and will automatically move it into the correct place so it is picked up by the build system..</p>
+<p>The script compiles for a single multicore machine setup, rather than for a cluster. However, it should be a good start for an Ethernet or Infiniband setup.</p>
+<p>If you're doing things by hand, you may see some errors during the compilation of charm - as long as you get <code>charm++ built successfully.</code> at the end, you should be OK.</p>
+<h2>Testing NAMD</h2>
+<p>We have been testing NAMD using the STMV files available from the <a href="http://www.ks.uiuc.edu/Research/namd/utilities/">NAMD website</a>:</p>
+<div class="highlight"><pre><span></span>cd NAMD_2.12_Source/Linux-POWER-g++
+wget http://www.ks.uiuc.edu/Research/namd/utilities/stmv.tar.gz
+tar -xf stmv.tar.gz
+sudo ./charmrun +p80 ./namd2 +pemap 0-159:2 +idlepoll +commthread stmv/stmv.namd
+</pre></div>
+
+
+<p>This binds a namd worker thread to every second hardware thread. This is because hardware threads share resources, so using every hardware thread costs overhead and doesn't give us access to any more physical resources.</p>
+<p>You should see messages about finding and using GPUs:</p>
+<div class="highlight"><pre><span></span>Pe 0 physical rank 0 binding to CUDA device 0 on &lt;hostname&gt;: &#39;Graphics Device&#39;  Mem: 4042MB  Rev: 6.0
+</pre></div>
+
+
+<p>This should be <em>significantly</em> faster than on non-NVLink machines - we saw a gain of about 2x in speed going from a machine with Nvidia K80s to a Minsky. If things aren't faster for you, let us know!</p>
+<h2>Downloads</h2>
+<ul>
+<li><a href="/images/namd/install-namd.sh">Install script for CentOS</a></li>
+<li><a href="/images/namd/Linux-POWER.cuda">Linux-POWER.cuda file</a></li>
+</ul>
+<h2>Other notes</h2>
+<p>Namd requires some libraries, some of which they supply as binary downloads on <a href="http://www.ks.uiuc.edu/Research/namd/libraries/">their website</a>.
+Make sure you get the ppc64le versions, not the ppc64 versions, otherwise you'll get errors like:</p>
+<div class="highlight"><pre><span></span>/bin/ld: failed to merge target specific data of file .rootdir/tcl/lib/libtcl8.5.a(regfree.o)
+/bin/ld: .rootdir/tcl/lib/libtcl8.5.a(regerror.o): compiled for a big endian system and target is little endian
+/bin/ld: failed to merge target specific data of file .rootdir/tcl/lib/libtcl8.5.a(regerror.o)
+/bin/ld: .rootdir/tcl/lib/libtcl8.5.a(tclAlloc.o): compiled for a big endian system and target is little endian
+</pre></div>
+
+
+<p>The script we supply should get these right automatically.</p> </div><!-- /.entry-content -->
+        </article></li>
+        <li><article class="hentry">
+                <header> <h2 class="entry-title"><a href="https://sthbrx.github.io/blog/2017/01/30/installing-centos-72-on-ibm-power-systems-s822lc-for-high-performance-computing-minksy-with-usb-device/" rel="bookmark" title="Permalink to Installing Centos 7.2 on IBM Power System's S822LC for High Performance Computing (Minksy) with USB device">Installing Centos 7.2 on IBM Power System's S822LC for High Performance Computing (Minksy) with USB device</a></h2> </header>
+                <footer class="post-info">
+                    <time class="published" datetime="2017-01-30T08:54:33+11:00"> Mon 30 January 2017 </time>
+                    <address class="vcard author">By
+                        <a class="url fn" href="https://sthbrx.github.io/author/daniel-black.html">Daniel Black</a>
+                    </address>
+                </footer><!-- /.post-info -->
+                <div class="entry-content"> <h2>Introduction</h2>
+<p>If you are installing Linux on your IBM Power System's S822LC server then the instructions in this article will help you to start and run your system.  These instructions are specific to installing CentOS 7 on an IBM Power System S822LC for High Performance Computing (Minsky), but also work for RHEL 7 - just swap CentOS for RHEL.</p>
+<h3>Prerequisites</h3>
+<p>Before you power on the system, ensure that you have the following items:</p>
+<ul>
+<li>Ethernet cables;</li>
+<li>USB storage device of 7G or greater;</li>
+<li>An installed ethernet network with a DHCP server;</li>
+<li>Access to the DHCP server's logs;</li>
+<li>Power cords and outlet for your system;</li>
+<li>PC or notebook that has IPMItool level 1.8.15 or greater; and </li>
+<li>a VNC client.</li>
+</ul>
+<p>Download CentOS ISO file from the <a href="http://mirror.centos.org/altarch/7/isos/ppc64le/">Centos Mirror</a>. Select the "Everything" ISO file.</p>
+<p>Note: You must use the 1611 release (dated 2016-12-22) or later due to Linux Kernel support for the server hardware.</p>
+<h2>Step 1: Preparing to power on your system</h2>
+<p>Follow these steps to prepare your system:</p>
+<ol>
+<li>If your system belongs in a rack, install your system into that rack. For instructions, see IBM POWER8 Systems information.</li>
+<li>Connect an Ethernet cable to the left embedded Ethernet port next to the serial port on the back of your system and the other end to your network. This Ethernet port is used for the BMC/IPMI interface.</li>
+<li>Connect another Enternet cable to the right Ethernet port for network connection for the operating system.</li>
+<li>Connect the power cords to the system and plug them into the outlets. </li>
+</ol>
+<p>At this point, your firmware is booting.</p>
+<h2>Step 2: Determining the BMC firmware IP address</h2>
+<p>To determine the IP address of the BMC, examine the latest DHCP server logs for the network connected to the server. The IP address will be requested approximately 2 minutes after being powered on.</p>
+<p>It is possible to set the BMC to a static IP address by following the <a href="https://www.ibm.com/support/knowledgecenter/en/TI0003H/p8eih/p8eih_managing_with_ipmi_ami.htm">IBM documentation on IPMI</a>.</p>
+<h2>Step 3: Connecting to the BMC firmware with IPMItool</h2>
+<p>After you have a network connection set up for your BMC firmware, you can connect using Intelligent Platform Management Interface (IPMI).  IPMI is the default console to use when connecting to the Open Power Abstraction Layer (OPAL) firmware.</p>
+<p>Use the default authentication for servers over IPMI is:</p>
+<ul>
+<li>Default user: ADMIN </li>
+<li>Default password: admin </li>
+</ul>
+<p>To power on your server from a PC or notebook that is running Linux®, follow these steps:</p>
+<p>Open a terminal program on your PC or notebook with <a href="#active-sol-ipmi">Activate Serial-Over-Lan using IPMI</a>. Use other steps here as needed.</p>
+<p>For the following impitool commands, server_ip_address is the IP address of the BMC from Step 2, and ipmi_user and ipmi_password are the default user ID and password for IPMI.</p>
+<h3>Power On using IPMI</h3>
+<p>If your server is not powered on, run the following command to power the server on:</p>
+<div class="highlight"><pre><span></span>ipmitool -I lanplus -H server_ip_address -U ipmi_user -P ipmi_password chassis power on
+</pre></div>
+
+
+<h3><a name="active-sol-ipmi"></a>Activate Serial-Over-Lan using IPMI</h3>
+<p>Activate your IPMI console by running this command:</p>
+<div class="highlight"><pre><span></span>ipmitool -I lanplus -H server_ip_address -U ipmi_user -P ipmi_password sol activate
+</pre></div>
+
+
+<p>After powering on your system, the Petitboot interface loads. If you do not interrupt the boot process by pressing any key within 10 seconds, Petitboot automatically boots the first option. At this point the IPMI console will be connected to the Operating Systems serial. If you get to this stage accidently you can deactivate and reboot as per the following two commands.</p>
+<h3>Deactivate Serial-Over-Lan using IPMI</h3>
+<p>If you need to power off or reboot your system, deactivate the console by running this command:</p>
+<div class="highlight"><pre><span></span>ipmitool -I lanplus -H server_ip_address -U user-name -P ipmi_password sol deactivate
+</pre></div>
+
+
+<h3>Reboot using IPMI</h3>
+<p>If you need to reboot the system, run this command: </p>
+<div class="highlight"><pre><span></span>ipmitool -I lanplus -H server_ip_address -U user-name -P ipmi_password chassis power reset
+</pre></div>
+
+
+<h2>Step 4: Creating a USB device and booting</h2>
+<p>At this point, your IPMI console should be contain a Petitboot bootloader menu as illustrated below and you are ready to install Centos 7 on your server.</p>
+<p><img alt="Petitboot menu over IPMI" src="/images/centos7-minsky/petitboot-centos7-usb-topmenu.png"> </p>
+<p>Use one of the following USB devices:</p>
+<ul>
+<li>USB attached DVD player with a single USB cable to stay under 1.0 Amps, or</li>
+<li>7 GB (or more) 2.0 (or later) USB flash drive. </li>
+</ul>
+<p>Follow the following instructions:</p>
+<ol>
+<li>To create the bootable USB device, follow the instructions in the CentOS wiki <a href="https://wiki.centos.org/HowTos/InstallFromUSBkey">Host to Set Up a USB to Install CentOS</a>.</li>
+<li>Insert your bootable USB device into the front USB port. CentOS AltArch installer will automatically appear as a boot option on the Petitboot main screen. If the USB device does not appear select <em>Rescan devices</em>. If your device is not detected, you might have to try a different type.</li>
+<li>Arrow up to select the CentOS boot option. Press <em>e</em> (Edit) to open the Petitboot Option Editor window</li>
+<li>Move the cursor to the Boot arguments section and to include the following information: <code>ro inst.stage2=hd:LABEL=CentOS_7_ppc64le:/ console=hvc0 ip=dhcp</code> (if using RHEL the LABEL will be similar to <code>RHEL-7.3\x20Server.ppc64le:/</code>)</li>
+</ol>
+<p><img alt="Petitboot edited &quot;Install CentOS AltArch 7 (64-bit kernel)" src="/images/centos7-minsky/petitboot-centos7-usb-option-editor-menu.png"></p>
+<p>Notes about the boot arguments:   </p>
+<ul>
+<li><code>ip=dhcp</code> to ensure network is started for VNC installation.</li>
+<li><code>console hvc0</code> is needed as this is not the default.</li>
+<li><code>inst.stage2</code> is needed as the boot process won't automatically find the stage2 install on the install disk.</li>
+<li>append <code>inst.proxy=URL</code> where URL is the proxy URL if installing in a network that requires a proxy to connect externally.</li>
+</ul>
+<p>You can find additional options at <a href="https://rhinstaller.github.io/anaconda/boot-options.html">Anaconda Boot Options</a>.</p>
+<ol>
+<li>Select <em>OK</em> to save your options and return to the Main menu </li>
+<li>On the Petitboot main screen, select the CentOS AltArch option and then press <em>Enter</em>. </li>
+</ol>
+<h2>Step 5: Complete your installation</h2>
+<p>After you select to boot the CentOS installer, the installer wizard walks you through the steps.  </p>
+<ol>
+<li>If the CentOS installer was able to obtain a network address via DHCP, it will present an option to enable the VNC. If no option is presented check your network cables. <img alt="VNC option" src="/images/centos7-minsky/anaconda-centos7-text-start.png"></li>
+<li>Select the <em>Start VNC</em> option and it will provide an OS server IP adress. Note that this will be different to the BMC address previously optained. <img alt="VNC option selected" src="/images/centos7-minsky/anaconda-centos7-vnc-selected.png"></li>
+<li>Run a VNC client program on your PC or notebook and connect to the OS server IP address.</li>
+</ol>
+<p><img alt="VNC of Installer" src="/images/centos7-minsky/anaconda-centos7-vnc-start.png"></p>
+<p>During the install over VNC, there are a couple of consoles active. To switch between them in the ipmitool terminal, press <em>ctrl-b</em> and then between <em>1</em>-<em>4</em> as indicated.</p>
+<p>Using the VNC client program:</p>
+<ol>
+<li>Select "Install Destination"</li>
+<li>Select a device from "Local Standard Disks"</li>
+<li>Select "Full disk summary and boot device"</li>
+<li>Select the device again from "Selected Disks" with the Boot enabled</li>
+<li>Select "Do not install boot loader" from device. <img alt="Disabling install of boot loader" src="/images/centos7-minsky/anaconda-centos7-vnc-installation-destination-do-not-install-boot-loader.png"> which results in <img alt="Result after disabling boot loader install" src="/images/centos7-minsky/anaconda-centos7-vnc-installation-destination-do-not-install-boot-loader-result.png">.</li>
+</ol>
+<p>Without disabling boot loader, the installer complains about <code>an invalid stage1 device</code>. I suspect it needs a manual Prep partition of 10M to make the installer happy.</p>
+<p>If you have a local Centos repository  you can set this by selecting "Install Source" - the directories at this url should look like <a href="http://mirror.centos.org/altarch/7/os/ppc64le/">CentOS's Install Source for ppc64le</a>.</p>
+<h2>Step 6: Before reboot and using the IPMI Serial-Over-LAN</h2>
+<p>Before reboot, generate the grub.cfg file as Petitboot uses this to generate its boot menu: </p>
+<ol>
+<li>Using the ipmitool's shell (<em>ctrl-b 2</em>):</li>
+<li>Enter the following commands to generate a grub.cfg file</li>
+</ol>
+<div class="highlight"><pre><span></span>chroot /mnt/sysimage
+rm /etc/grub.d/30_os-prober
+grub2-mkconfig -o /boot/grub2/grub.cfg
+exit
+</pre></div>
+
+
+<p><code>/etc/grub.d/30_os-prober</code> is removed as Petitboot probes the other devices anyway so including it would create lots of duplicate menu items.</p>
+<p>The last step is to restart your system.</p>
+<p>Note: While your system is restarting, remove the USB device. </p>
+<p>After the system restarts, Petitboot displays the option to boot CentOS 7.2. Select this option and press Enter. </p>
+<h2>Conclusion</h2>
+<p>After you have booted CentOS, your server is ready to go!
+For more information, see the following resources:</p>
+<ul>
+<li><a href="https://www.ibm.com/support/knowledgecenter/">IBM Knowledge Center</a></li>
+<li><a href="https://www.ibm.com/developerworks/community/groups/service/html/communityview?communityUuid=fe313521-2e95-46f2-817d-44a4f27eba32">The Linux on Power Community</a></li>
+<li><a href="https://developer.ibm.com/linuxonpower/category/announcements/">The Linux on Power Developer Center</a></li>
+<li><a href="https://twitter.com/ibmpowerlinux">Follow us @ibmpowerlinux</a></li>
+</ul> </div><!-- /.entry-content -->
+        </article></li>
+</ol><!-- /#posts-list -->
+<p class="paginator">
+    Page 1 / 3
+        <a href="https://sthbrx.github.io/category/openpower2.html">&raquo;</a>
+</p>
+</section><!-- /#content -->
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+        </footer><!-- /#contentinfo -->
 </body>
 </html>
